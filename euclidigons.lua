@@ -6,6 +6,8 @@ musicutil = require 'musicutil'
 tau = math.pi * 2
 y_center = 32.5
 
+scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
+
 local Shape = include 'lib/shape'
 
 function calculate_point_segment_intersection(v1, v2a, v2b)
@@ -102,10 +104,10 @@ function calculate_intersection(shape1, shape2)
 				if t1 > 0 then
 					clock.run(function()
 						clock.sleep(t1 * rate)
-						shape1:on_side_struck(side1)
+						shape1:on_strike(side1)
 					end)
 				else
-					shape1:on_side_struck(side1)
+					shape1:on_strike(side1)
 				end
 				shape1.side_levels[side1] = 1
 				vertex2a.level = 1
@@ -115,10 +117,10 @@ function calculate_intersection(shape1, shape2)
 				if t2 > 0 then
 					clock.run(function()
 						clock.sleep(t2 * rate)
-						shape2:on_side_struck(side2)
+						shape2:on_strike(side2)
 					end)
 				else
-					shape2:on_side_struck(side2)
+					shape2:on_strike(side2)
 				end
 				shape2.side_levels[side2] = 1
 				vertex1a.level = 1
@@ -133,19 +135,8 @@ rate = 1 / 32
 
 function init()
 
-	shapes[1] = Shape.new(3, 30, 70, tau / 200)
-	shapes[1].notes = { 28, 40, 47 }
-	shapes[1].on_side_struck = function(self, side)
-		-- crow.ii.tt.script(2)
-		engine.hz(musicutil.note_num_to_freq(self.notes[side]))
-	end
-
-	shapes[2] = Shape.new(5, 30, 55, tau / 300)
-	shapes[2].notes = { 52, 55, 59, 60, 62 }
-	shapes[2].on_side_struck = function(self, side)
-		-- crow.ii.tt.script(4)
-		engine.hz(musicutil.note_num_to_freq(self.notes[side]))
-	end
+	shapes[1] = Shape.new(1, 3, 30, 70, tau / 200)
+	shapes[2] = Shape.new(2, 5, 30, 55, tau / 300)
 
 	n_shapes = 2
 	

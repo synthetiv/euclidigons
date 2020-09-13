@@ -1,9 +1,11 @@
 Shape = {}
-Shape.__index = Shape
 
-function Shape.new(n, r, x, rate)
+function Shape.new(note, n, r, x, rate)
 	local shape = {
-		n = n,
+		_note = 1,
+		note_freq = 440,
+		_n = 0,
+		area = 0,
 		r = r,
 		x = x,
 		rate = rate,
@@ -11,31 +13,57 @@ function Shape.new(n, r, x, rate)
 		vertices = {},
 		side_levels = {}
 	}
-	for v = 1, n do
-		shape.vertices[v] = {
-			x = x,
-			y = y_center,
-			nx = x,
-			ny = y_center,
-			level = 0
-		}
-		shape.side_levels[v] = 0
-	end
 	setmetatable(shape, Shape)
-	shape:calculate_points()
-	shape:calculate_points()
-	shape:calculate_area()
+	-- initialize with 'n' sides and note 'note'
+	shape.n = n
+	shape.note = note
 	return shape
+end
+
+function Shape:__newindex(index, value)
+	if index == 'n' then
+		self._n = value
+		self:calculate_points()
+		self:calculate_area()
+	elseif index == 'note' then
+		self._note = value
+		local scale_degrees = #scale
+		local degree = (value - 1) % #scale + 1
+		local octave = math.floor(self.note / #scale)
+		self.note_freq = musicutil.note_num_to_freq(scale[degree] + octave * 12)
+	end
+end
+
+function Shape:__index(index)
+	if index == 'n' then
+		return self._n
+	elseif index == 'note' then
+		return self._note
+	end
+	return Shape[index]
 end
 
 function Shape:calculate_points()
 	local vertex_angle = tau / self.n
 	for v = 1, self.n do
 		local vertex = self.vertices[v]
-		vertex.x = vertex.nx
-		vertex.y = vertex.ny
-		vertex.nx = self.x + math.cos(self.theta + v * vertex_angle) * self.r
-		vertex.ny = y_center + math.sin(self.theta + v * vertex_angle) * self.r
+		-- initialize if necessary
+		if vertex == nil then
+			vertex = {
+				level = 0
+			}
+			self.vertices[v] = vertex
+			self.side_levels[v] = self.side_levels[v] or 0
+		end
+		-- calculate next x and y
+		local nx = self.x + math.cos(self.theta + v * vertex_angle) * self.r
+		local ny = y_center + math.sin(self.theta + v * vertex_angle) * self.r
+		-- apply previous frame's 'next' values, if any
+		vertex.x = vertex.nx or nx
+		vertex.y = vertex.ny or ny
+		-- save next values for next frame
+		vertex.nx = nx
+		vertex.ny = ny
 	end
 end
 
@@ -77,6 +105,11 @@ function Shape:draw_points()
 		screen.level(15)
 		screen.fill()
 	end
+end
+
+function Shape:on_strike(side)
+	-- crow.ii.tt.script(2)
+	engine.hz(self.note_freq)
 end
 
 return Shape
