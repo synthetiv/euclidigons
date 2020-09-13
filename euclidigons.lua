@@ -151,7 +151,7 @@ function init()
 					shape.vertices[v].level = shape.vertices[v].level * 0.85
 				end
 				-- calculate position in next frame
-				shape:rotate()
+				shape:tick()
 			end
 			-- check for intersections between shapes, play notes as needed
 			for s1 = 1, #shapes do
@@ -215,14 +215,13 @@ function enc(n, d)
 		if shift then
 			edit_shape.rate = edit_shape.rate + d * 0.001
 		else
-			edit_shape.x = edit_shape.x + d
+			edit_shape.delta_x = edit_shape.delta_x + d
 		end
 	elseif n == 3 then
 		if shift then
 			edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
 		else
 			edit_shape.r = math.max(edit_shape.r + d, 1)
-			edit_shape:calculate_area()
 		end
 	end
 end

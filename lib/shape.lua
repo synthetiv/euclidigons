@@ -6,8 +6,10 @@ function Shape.new(note, n, r, x, rate)
 		note_freq = 440,
 		_n = 0,
 		area = 0,
-		r = r,
+		_r = r,
+		delta_x = 0,
 		x = x,
+		nx = x,
 		rate = rate,
 		theta = 0,
 		vertices = {},
@@ -25,6 +27,9 @@ function Shape:__newindex(index, value)
 		self._n = value
 		self:calculate_points()
 		self:calculate_area()
+	elseif index == 'r' then
+		self._r = value
+		self:calculate_area()
 	elseif index == 'note' then
 		self._note = value
 		local scale_degrees = #scale
@@ -37,6 +42,8 @@ end
 function Shape:__index(index)
 	if index == 'n' then
 		return self._n
+	elseif index == 'r' then
+		return self._r
 	elseif index == 'note' then
 		return self._note
 	end
@@ -56,7 +63,7 @@ function Shape:calculate_points()
 			self.side_levels[v] = self.side_levels[v] or 0
 		end
 		-- calculate next x and y
-		local nx = self.x + math.cos(self.theta + v * vertex_angle) * self.r
+		local nx = self.nx + math.cos(self.theta + v * vertex_angle) * self.r
 		local ny = y_center + math.sin(self.theta + v * vertex_angle) * self.r
 		-- apply previous frame's 'next' values, if any
 		vertex.x = vertex.nx or nx
@@ -77,7 +84,10 @@ function Shape:calculate_area()
 	self.area = area
 end
 
-function Shape:rotate()
+function Shape:tick()
+	self.x = self.nx
+	self.nx = self.nx + self.delta_x
+	self.delta_x = 0
 	self.theta = self.theta + self.rate
 	while self.theta > tau do
 		self.theta = self.theta - tau
