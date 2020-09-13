@@ -3,23 +3,26 @@
 engine.name = 'PolyPerc'
 musicutil = require 'musicutil'
 
+local Shape = include 'lib/shape'
+
 tau = math.pi * 2
 y_center = 32.5
 
+edit_shape = nil
+shapes = {}
+
+rate = 1 / 32
+
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
-edit_shape = nil
-
-local Shape = include 'lib/shape'
+alt = false
+shift = false
 
 function handle_strike(shape, side)
 	-- crow.ii.tt.script(2)
 	-- TODO: throttle notes -- PolyPerc can crash SC when asked to create too many synths
 	engine.hz(shape.note_freq)
 end
-
-shapes = {}
-rate = 1 / 32
 
 function init()
 
@@ -89,9 +92,6 @@ function redraw()
 	end
 	screen.update()
 end
-
-alt = false
-shift = false
 
 function key(n, z)
 	if n == 1 then
