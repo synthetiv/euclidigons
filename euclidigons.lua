@@ -187,15 +187,18 @@ function redraw()
 			shapes[s]:draw_points()
 		end
 	end
-	if alt then
+	edit_shape:draw_points(true)
+	if shift or alt then
 		screen.circle(edit_shape.x, y_center, 6)
 		screen.level(0)
 		screen.fill()
 		screen.move(edit_shape.x, y_center + 2.5)
 		screen.level(15)
-		screen.text_center(edit_shape.note_name)
-	else
-		edit_shape:draw_points(true)
+		if shift then
+			screen.text_center(edit_shape.n)
+		elseif alt then
+			screen.text_center(edit_shape.note_name)
+		end
 	end
 	screen.update()
 end
