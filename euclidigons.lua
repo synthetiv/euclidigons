@@ -206,6 +206,7 @@ end
 
 function enc(n, d)
 	if n == 1 then
+		-- select shape to edit
 		local best_distance = math.huge
 		local nearest_shape = edit_shape
 		for s = 1, #shapes do
@@ -221,15 +222,25 @@ function enc(n, d)
 		end
 		edit_shape = nearest_shape
 	elseif n == 2 then
-		if shift then
+		if alt then
+			-- set note
+			edit_shape.note = edit_shape.note + d
+		elseif shift then
+			-- set rotation rate
 			edit_shape.rate = edit_shape.rate + d * 0.001
 		else
+			-- set position
 			edit_shape.delta_x = edit_shape.delta_x + d
 		end
 	elseif n == 3 then
-		if shift then
+		if alt then
+			-- set octave
+			edit_shape.note = edit_shape.note + d * #scale
+		elseif shift then
+			-- set number of sides
 			edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
 		else
+			-- set size
 			edit_shape.r = math.max(edit_shape.r + d, 1)
 		end
 	end
