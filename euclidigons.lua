@@ -138,7 +138,9 @@ rate = 1 / 32
 function init()
 
 	shapes[1] = Shape.new(1, 3, 30, 70.5, tau / 200)
+	shapes[1].mute = false
 	shapes[2] = Shape.new(2, 5, 30, 55.5, tau / 300)
+	shapes[2].mute = false
 	
 	edit_shape = shapes[1]
 
