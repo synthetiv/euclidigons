@@ -145,10 +145,20 @@ function init()
 			for s = 1, n_shapes do
 				local shape = shapes[s]
 				for v = 1, shape.n do
+					-- decay level fades
 					shape.side_levels[v] = shape.side_levels[v] * 0.85
 					shape.vertices[v].level = shape.vertices[v].level * 0.85
 				end
+				-- calculate position in next frame
 				shape:rotate()
+			end
+			-- check for intersections between shapes, play notes as needed
+			for s1 = 1, n_shapes do
+				local shape1 = shapes[s1]
+				for s2 = s1 + 1, #shapes do
+					local shape2 = shapes[s2]
+					calculate_intersection(shape1, shape2)
+				end
 			end
 			redraw()
 		end
@@ -161,13 +171,6 @@ end
 function redraw()
 	screen.clear()
 	screen.aa(1)
-	for s1 = 1, n_shapes do
-		local shape1 = shapes[s1]
-		for s2 = s1 + 1, #shapes do
-			local shape2 = shapes[s2]
-			calculate_intersection(shape1, shape2)
-		end
-	end
 	for s = 1, n_shapes do
 		shapes[s]:draw_lines()
 	end
