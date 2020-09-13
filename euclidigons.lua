@@ -12,12 +12,11 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 	-- two vectors expressible in terms of t (time), using nx,ny and x,y: v2a to v1, and v2a to v2b
 	-- if their cross product is zero at any point in time, that's when they collide
 
-	local t = -1
+	local t
 
-	-- special case if v2a and v2b aren't moving: cross product won't involve t^2, so quadratic
-	-- formula won't work; we can just solve for t:
 	if v2a.nx == v2a.x and v2a.ny == v2a.y and v2b.nx == v2b.x and v2b.ny == v2b.y then
-
+		-- special case if v2a and v2b aren't moving: cross product won't involve t^2, so quadratic
+		-- formula won't work; we can just solve for t:
 		local d1x = v1.x - v2a.x
 		local d1y = v1.y - v2a.y
 		local dd1x = v1.nx - v1.x
@@ -28,8 +27,8 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 		if t < 0 or t > 1 then
 			return nil
 		end
-
 	else
+		-- if everything's moving, we'll have to do this the hard way
 
 		-- distances used repeatedly below
 		local d1x = v1.x - v2a.x
@@ -46,14 +45,6 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 		local b = dd2y * d1x + dd1x * d2y - dd2x * d1y - dd1y * d2x
 		local c = d2y * d1x - d2x * d1y
 		
-		-- TODO: very peculiar:
-		-- this doesn't work correctly when v2a and v2b aren't moving.
-		-- what does that mean?
-		-- ah-ha: dd2x and dd2y will be zero, so /2a will be a divide by zero
-		-- a == 0 does NOT necessarily mean a collision, though
-		-- I guess it just means you should use a regular non-moving intercept formula...?
-		-- or can you do something with cross products that aren't in terms of t?
-
 		-- now we'll plug all of this into the quadratic formula...
 		-- a negative discriminant means there's no solution (no intersection). bail.
 		local discriminant = b * b - 4 * a * c
@@ -71,7 +62,6 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 		if t < 0 or t > 1 then
 			return nil
 		end
-		
 	end
 	
 	-- now check that, at time t, v1 actually intersects with line segment v2a v2b
