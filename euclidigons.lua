@@ -235,7 +235,7 @@ function enc(n, d)
 	elseif n == 2 then
 		if shift then
 			-- set rotation rate
-			edit_shape.rate = edit_shape.rate + d * 0.001
+			edit_shape.rate = edit_shape.rate + d * 0.0015
 		elseif alt then
 			-- set note
 			edit_shape.note = edit_shape.note + d

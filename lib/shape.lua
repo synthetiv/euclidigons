@@ -39,7 +39,6 @@ function Shape:__newindex(index, value)
 		local degree = (value - 1) % #scale + 1
 		local octave = math.floor((value - 1) / #scale)
 		local note_num = scale[degree] + octave * 12
-		print(musicutil.note_num_to_name(note_num, true))
 		self.note_name = musicutil.note_num_to_name(note_num, true)
 		self.note_freq = musicutil.note_num_to_freq(note_num)
 	end
