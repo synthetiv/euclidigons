@@ -92,10 +92,21 @@ function calculate_intersection(shape1, shape2)
 	elseif shape1.x - shape1.r > shape2.x + shape2.r then
 		return
 	end
+	
+	local sides1 = shape1.n
+	-- special case for "two-sided" "polygon": that's a line, and if we count
+	-- both sides, we're counting it twice.
+	if sides1 == 2 then
+		sides1 = 1
+	end
 
-	for side1 = 1, shape1.n do
+	for side1 = 1, sides1 do
 		local vertex1a = shape1.vertices[side1]
 		local vertex1b = shape1.vertices[side1 % shape1.n + 1]
+		local sides2 = shape2.n
+		if sides2 == 2 then
+			sides2 = 1
+		end
 		for side2 = 1, shape2.n do
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			local vertex2a = shape2.vertices[side2]
