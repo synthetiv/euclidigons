@@ -58,9 +58,6 @@ function init()
 			redraw()
 		end
 	end)
-
-	crow.output[2].action = '{ to(5, 0), to(0, 0.1) }'
-	crow.output[4].action = '{ to(5, 0), to(0, 0.1) }'
 end
 
 function redraw()
