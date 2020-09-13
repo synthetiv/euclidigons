@@ -118,7 +118,7 @@ function Shape:draw_lines(selected)
 		screen.stroke()
 	end
 end
-	
+
 function Shape:draw_points(selected)
 	for v = 1, self.n do
 		local vertex = self.vertices[v]
@@ -143,9 +143,123 @@ function Shape:draw_points(selected)
 	end
 end
 
-function Shape:on_strike(side)
-	-- crow.ii.tt.script(2)
-	engine.hz(self.note_freq)
+-- check whether a moving point will intercept a moving line between now and
+-- the next animation frame
+function calculate_point_segment_intersection(v1, v2a, v2b)
+	-- two vectors expressible in terms of t (time), using nx,ny and x,y: v2a to v1, and v2a to v2b
+	-- if their cross product is zero at any point in time, that's when they collide
+
+	local t
+
+	if v2a.nx == v2a.x and v2a.ny == v2a.y and v2b.nx == v2b.x and v2b.ny == v2b.y then
+		-- special case if v2a and v2b aren't moving: cross product won't involve t^2, so quadratic
+		-- formula won't work; we can just solve for t:
+		local d1x = v1.x - v2a.x
+		local d1y = v1.y - v2a.y
+		local dd1x = v1.nx - v1.x
+		local dd1y = v1.ny - v1.y
+		local d2x = v2b.x - v2a.x
+		local d2y = v2b.y - v2a.y
+		t = (d1y * d2x - d1x * d2y) / (dd1x * d2y - dd1y * d2x)
+		if t < 0 or t > 1 then
+			return nil
+		end
+	else
+		-- if everything's moving, we'll have to do this the hard way
+
+		-- distances used repeatedly below
+		local d1x = v1.x - v2a.x
+		local d1y = v1.y - v2a.y
+		local dd1x = v1.nx - v2a.nx - d1x
+		local dd1y = v1.ny - v2a.ny - d1y
+		local d2x = v2b.x - v2a.x
+		local d2y = v2b.y - v2a.y
+		local dd2x = v2b.nx - v2a.nx - d2x
+		local dd2y = v2b.ny - v2a.ny - d2y
+
+		-- coefficients of t^2, t, and t^0 in cross product, worked out by hand
+		local a = dd1x * dd2y - dd1y * dd2x
+		local b = dd2y * d1x + dd1x * d2y - dd2x * d1y - dd1y * d2x
+		local c = d2y * d1x - d2x * d1y
+
+		-- now we'll plug all of this into the quadratic formula...
+		-- a negative discriminant means there's no solution (no intersection). bail.
+		local discriminant = b * b - 4 * a * c
+		if discriminant < 0 then
+			return nil
+		end
+
+		local sqrt = math.sqrt(discriminant)
+		t = (-b + sqrt) / (2 * a)
+		-- we're looking for a solution in the range [0, 1], so if one of the two possible solutions
+		-- doesn't fit, try the other, and if that doesn't fit, give up
+		if t < 0 or t > 1 then
+			t = (-b - sqrt) / (2 * a)
+		end
+		if t < 0 or t > 1 then
+			return nil
+		end
+	end
+
+	-- now check that, at time t, v1 actually intersects with line segment v2a v2b
+	local v1xt  =  v1.x + t * ( v1.nx - v1.x)
+	local v1yt  =  v1.y + t * ( v1.ny - v1.y)
+	local v2axt = v2a.x + t * (v2a.nx - v2a.x)
+	local v2ayt = v2a.y + t * (v2a.ny - v2a.y)
+	local v2bxt = v2b.x + t * (v2b.nx - v2b.x)
+	local v2byt = v2b.y + t * (v2b.ny - v2b.y)
+	if v1xt >= math.min(v2axt, v2bxt) and v1xt <= math.max(v2axt, v2bxt) and v1yt >= math.min(v2ayt, v2byt) and v1yt <= math.max(v2ayt, v2byt) then
+		return t, v1xt, v1yt
+	end
+
+	return nil
+end
+
+-- check whether any of this shape's points will touch another shape's sides
+-- between now and the next animation frame
+function Shape:check_intersection(other)
+
+	-- if either shape is muted, skip calculation
+	if self.mute or other.mute then
+		return
+	end
+
+	-- if shapes are too far apart to intersect, skip calculation
+	if math.max(self.x, self.nx) + self.r < math.min(other.x, other.nx) - other.r then
+		return
+	elseif math.max(other.x, other.nx) + other.r < math.min(self.x, self.nx) - self.r then
+		return
+	end
+
+	for v = 1, self.n do
+		local vertex1 = self.vertices[v]
+
+		local sides = other.n
+		-- special case for "two-sided" "polygon": that's a line, and if we counted
+		-- both sides, we'd be counting it twice
+		if sides == 2 then
+			sides = 1
+		end
+
+		for s = 1, sides do
+			-- TODO: it's probably a waste of time to do this for every pair of segments...
+			local vertex2a = other.vertices[s]
+			local vertex2b = other.vertices[s % other.n + 1]
+			local t2, x2, y2 = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b)
+			if t2 ~= nil then
+				if t2 > 0 then
+					clock.run(function()
+						clock.sleep(t2 * rate)
+						handle_strike(other, s)
+					end)
+				else
+					handle_strike(other, s)
+				end
+				other.side_levels[s] = 1
+				vertex1.level = 1
+			end
+		end
+	end
 end
 
 return Shape
