@@ -181,13 +181,22 @@ function redraw()
 			shapes[s]:draw_lines()
 		end
 	end
+	edit_shape:draw_lines(true)
 	for s = 1, #shapes do
 		if shapes[s] ~= edit_shape then
 			shapes[s]:draw_points()
 		end
 	end
-	edit_shape:draw_lines(true)
-	edit_shape:draw_points(true)
+	if alt then
+		screen.circle(edit_shape.x, y_center, 6)
+		screen.level(0)
+		screen.fill()
+		screen.move(edit_shape.x, y_center + 2.5)
+		screen.level(15)
+		screen.text_center(edit_shape.note_name)
+	else
+		edit_shape:draw_points(true)
+	end
 	screen.update()
 end
 
@@ -224,23 +233,23 @@ function enc(n, d)
 		end
 		edit_shape = nearest_shape
 	elseif n == 2 then
-		if alt then
-			-- set note
-			edit_shape.note = edit_shape.note + d
-		elseif shift then
+		if shift then
 			-- set rotation rate
 			edit_shape.rate = edit_shape.rate + d * 0.001
+		elseif alt then
+			-- set note
+			edit_shape.note = edit_shape.note + d
 		else
 			-- set position
 			edit_shape.delta_x = edit_shape.delta_x + d
 		end
 	elseif n == 3 then
-		if alt then
-			-- set octave
-			edit_shape.note = edit_shape.note + d * #scale
-		elseif shift then
+		if shift then
 			-- set number of sides
 			edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
+		elseif alt then
+			-- set octave
+			edit_shape.note = edit_shape.note + d * #scale
 		else
 			-- set size
 			edit_shape.r = math.max(edit_shape.r + d, 1)

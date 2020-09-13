@@ -3,6 +3,7 @@ Shape = {}
 function Shape.new(note, n, r, x, rate)
 	local shape = {
 		_note = 1,
+		note_name = 'A3',
 		note_freq = 440,
 		mute = true,
 		_n = 0,
@@ -18,6 +19,7 @@ function Shape.new(note, n, r, x, rate)
 	}
 	setmetatable(shape, Shape)
 	-- initialize with 'n' sides and note 'note'
+	shape.r = r
 	shape.n = n
 	shape.note = note
 	return shape
@@ -35,8 +37,11 @@ function Shape:__newindex(index, value)
 		self._note = value
 		local scale_degrees = #scale
 		local degree = (value - 1) % #scale + 1
-		local octave = math.floor(self.note / #scale)
-		self.note_freq = musicutil.note_num_to_freq(scale[degree] + octave * 12)
+		local octave = math.floor((value - 1) / #scale)
+		local note_num = scale[degree] + octave * 12
+		print(musicutil.note_num_to_name(note_num, true))
+		self.note_name = musicutil.note_num_to_name(note_num, true)
+		self.note_freq = musicutil.note_num_to_freq(note_num)
 	end
 end
 
