@@ -212,7 +212,11 @@ function enc(n, d)
 			edit_shape.x = edit_shape.x + d
 		end
 	elseif n == 3 then
-		edit_shape.r = edit_shape.r + d
-		edit_shape:calculate_area()
+		if shift then
+			edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
+		else
+			edit_shape.r = math.max(edit_shape.r + d, 1)
+			edit_shape:calculate_area()
+		end
 	end
 end
