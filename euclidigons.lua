@@ -78,53 +78,6 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 	return nil
 end
 
-function clip_points_to_segment(points, vertexa, vertexb, x_center)
-	
-	local n_points = #points
-	if n_points == 0 then return points end
-
-	local new_points = {}
-
-	-- get slope & intercept of the line containing vertexa and vertexb; we'll use this to eliminate vertices
-	-- that can't possibly fall within shape1
-	local slope = (vertexb.y - vertexa.y) / (vertexb.x - vertexa.x)
-	local intercept = vertexa.y - slope * vertexa.x
-	
-	for p = 1, n_points do
-		local point = points[p]
-		-- if both (x_center, y_center) and point are below the line described by slope and intercept,
-		-- or both above, add point to the next list.
-		if y_center > slope * x_center + intercept then
-			if point.y > slope * point.x + intercept then
-				table.insert(new_points, point)
-			end
-		elseif point.y < slope * point.x + intercept then
-			table.insert(new_points, point)
-		end
-		-- check whether the segment formed by points p and p2 intersects with the line containing
-		-- vertexa and vertexb. if so, add the intersection as a new point.
-		local point2 = points[p % n_points + 1]
-		-- I guess you could find the intersection of the two lines and then check whether the
-		-- intersection is on the segment
-		local slope2 = (point2.y - point.y) / (point2.x - point.x)
-		local intercept2 = point.y - slope2 * point.x
-		-- set the two equal to one another...
-		-- slope * x + intercept = slope2 * x + intercept2
-		-- and solve for x...
-		-- slope * x - slope2 * x = intercept2 - intercept
-		-- x * (slope - slope2) = intercept2 - intercept
-		local x = (intercept2 - intercept) / (slope - slope2)
-		if x >= math.min(point.x, point2.x) and x <= math.max(point.x, point2.x) then
-			table.insert(new_points, {
-				x = x,
-				y = slope * x + intercept
-			})
-		end
-	end
-
-	return new_points
-end
-
 function calculate_intersection(shape1, shape2)
 
 	-- if shapes are too far apart to intersect, skip calculation
@@ -136,20 +89,9 @@ function calculate_intersection(shape1, shape2)
 		return
 	end
 
-	-- start with the assumption that shape2 is entirely inside shape1, then we'll eliminate vertices
-	-- as needed (Sutherland-Hodgman clipping algorithm)
-	local intersection_points = {}
-	for s = 1, shape2.n do
-		intersection_points[s] = shape2.vertices[s]
-	end
-
 	for side1 = 1, shape1.n do
-
 		local vertex1a = shape1.vertices[side1]
 		local vertex1b = shape1.vertices[side1 % shape1.n + 1]
-		
-		intersection_points = clip_points_to_segment(intersection_points, vertex1a, vertex1b, shape1.x)
-
 		for side2 = 1, shape2.n do
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			-- TODO: trigger unidirectionally? i.e. only when vertex2a ENTERS shape1
@@ -183,30 +125,11 @@ function calculate_intersection(shape1, shape2)
 			end
 		end
 	end
-			
-	-- calculate intersection area
-	local area = 0
-	local overlap = 0
-	if intersection_points[1] ~= nil then
-		local n_points = #intersection_points
-		screen.move(intersection_points[1].x, intersection_points[1].y)
-		for p = 1, n_points do
-			local point = intersection_points[p]
-			screen.line(point.x, point.y)
-			local point2 = intersection_points[p % n_points + 1]
-			area = area + point.x * point2.y - point.y * point2.x
-		end
-		overlap = area / math.min(shape1.area, shape2.area)
-	end
-	crow.output[1].volts = 10 * overlap
-	engine.pw(overlap)
 end
 
 shapes = {}
 n_shapes = 0
 rate = 1 / 32
-
-shape_matrix = {}
 
 function init()
 
@@ -226,16 +149,6 @@ function init()
 
 	n_shapes = 2
 	
-	local m = 1
-	for s1 = 1, n_shapes do
-		for s2 = s1 + 1, n_shapes do
-			shape_matrix[m] = {
-				note = 1, -- TODO
-				intersection = 0
-			}
-		end
-	end
-
 	clock.run(function()
 		while true do
 			clock.sync(rate)
