@@ -85,11 +85,14 @@ function Shape:rotate()
 	self:calculate_points()
 end
 
-function Shape:draw_lines()
+function Shape:draw_lines(selected)
 	for v = 1, self.n do
 		local vertex1 = self.vertices[v]
 		local vertex2 = self.vertices[v % self.n + 1]
 		local level = self.side_levels[v]
+		if selected then
+			level = level * 0.7 + 0.3
+		end
 		screen.move(vertex1.x, vertex1.y)
 		screen.line(vertex2.x, vertex2.y)
 		screen.level(math.floor(2 + level * 13))
@@ -98,11 +101,15 @@ function Shape:draw_lines()
 	end
 end
 	
-function Shape:draw_points()
+function Shape:draw_points(selected)
 	for v = 1, self.n do
 		local vertex = self.vertices[v]
-		screen.circle(vertex.x, vertex.y, 0.5 + vertex.level * 3)
-		screen.level(15)
+		local level = vertex.level
+		if selected then
+			level = level * 0.8 + 0.2
+		end
+		screen.circle(vertex.x, vertex.y, 0.5 + level * 3)
+		screen.level(math.floor(6 + level * 9))
 		screen.fill()
 	end
 end

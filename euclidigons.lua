@@ -8,6 +8,8 @@ y_center = 32.5
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
+edit_shape = nil
+
 local Shape = include 'lib/shape'
 
 function calculate_point_segment_intersection(v1, v2a, v2b)
@@ -129,20 +131,19 @@ function calculate_intersection(shape1, shape2)
 end
 
 shapes = {}
-n_shapes = 0
 rate = 1 / 32
 
 function init()
 
 	shapes[1] = Shape.new(1, 3, 30, 70, tau / 200)
 	shapes[2] = Shape.new(2, 5, 30, 55, tau / 300)
-
-	n_shapes = 2
 	
+	edit_shape = shapes[1]
+
 	clock.run(function()
 		while true do
 			clock.sync(rate)
-			for s = 1, n_shapes do
+			for s = 1, #shapes do
 				local shape = shapes[s]
 				for v = 1, shape.n do
 					-- decay level fades
@@ -153,7 +154,7 @@ function init()
 				shape:rotate()
 			end
 			-- check for intersections between shapes, play notes as needed
-			for s1 = 1, n_shapes do
+			for s1 = 1, #shapes do
 				local shape1 = shapes[s1]
 				for s2 = s1 + 1, #shapes do
 					local shape2 = shapes[s2]
@@ -171,11 +172,11 @@ end
 function redraw()
 	screen.clear()
 	screen.aa(1)
-	for s = 1, n_shapes do
-		shapes[s]:draw_lines()
+	for s = 1, #shapes do
+		shapes[s]:draw_lines(shapes[s] == edit_shape)
 	end
-	for s = 1, n_shapes do
-		shapes[s]:draw_points()
+	for s = 1, #shapes do
+		shapes[s]:draw_points(shapes[s] == edit_shape)
 	end
 	screen.update()
 end
@@ -189,14 +190,29 @@ function key(n, z)
 end
 
 function enc(n, d)
-	if n == 2 then
+	if n == 1 then
+		local best_distance = math.huge
+		local nearest_shape = edit_shape
+		for s = 1, #shapes do
+			local shape = shapes[s]
+			if shape ~= edit_shape then
+				local distance = (shape.x - edit_shape.x) * d
+				if distance > 0 and distance < best_distance then
+					best_distance = distance
+					print(best_distance)
+					nearest_shape = shape
+				end
+			end
+		end
+		edit_shape = nearest_shape
+	elseif n == 2 then
 		if shift then
-			shapes[1].rate = shapes[1].rate + d * 0.001
+			edit_shape.rate = edit_shape.rate + d * 0.001
 		else
-			shapes[1].x = shapes[1].x + d
+			edit_shape.x = edit_shape.x + d
 		end
 	elseif n == 3 then
-		shapes[1].r = shapes[1].r + d
-		shapes[1]:calculate_area()
+		edit_shape.r = edit_shape.r + d
+		edit_shape:calculate_area()
 	end
 end
