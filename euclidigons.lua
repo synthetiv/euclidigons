@@ -96,7 +96,6 @@ function calculate_intersection(shape1, shape2)
 		local vertex1b = shape1.vertices[side1 % shape1.n + 1]
 		for side2 = 1, shape2.n do
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
-			-- TODO: trigger unidirectionally? i.e. only when vertex2a ENTERS shape1
 			local vertex2a = shape2.vertices[side2]
 			local vertex2b = shape2.vertices[side2 % shape2.n + 1]
 			local t1, x1, y1 = calculate_point_segment_intersection(vertex2a, vertex1a, vertex1b)
