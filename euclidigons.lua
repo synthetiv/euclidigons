@@ -173,11 +173,17 @@ function redraw()
 	screen.clear()
 	screen.aa(1)
 	for s = 1, #shapes do
-		shapes[s]:draw_lines(shapes[s] == edit_shape)
+		if shapes[s] ~= edit_shape then
+			shapes[s]:draw_lines()
+		end
 	end
 	for s = 1, #shapes do
-		shapes[s]:draw_points(shapes[s] == edit_shape)
+		if shapes[s] ~= edit_shape then
+			shapes[s]:draw_points()
+		end
 	end
+	edit_shape:draw_lines(true)
+	edit_shape:draw_points(true)
 	screen.update()
 end
 
