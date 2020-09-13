@@ -1,5 +1,8 @@
 -- euclidigons
 
+engine.name = 'PolyPerc'
+musicutil = require 'musicutil'
+
 tau = math.pi * 2
 y_center = 32.5
 
@@ -164,28 +167,26 @@ function calculate_intersection(shape1, shape2)
 			local vertex2b = shape2.vertices[side2 % shape2.n + 1]
 			local t1, x1, y1 = calculate_point_segment_intersection(vertex2a, vertex1a, vertex1b)
 			if t1 ~= nil then
-				print('2-1', t1)
 				if t1 > 0 then
 					clock.run(function()
 						clock.sleep(t1 * rate)
-						crow.ii.tt.script(2)
+						shape1:on_side_struck(side1)
 					end)
 				else
-					crow.ii.tt.script(2)
+					shape1:on_side_struck(side1)
 				end
 				shape1.side_levels[side1] = 1
 				vertex2a.level = 1
 			end
 			local t2, x2, y2 = calculate_point_segment_intersection(vertex1a, vertex2a, vertex2b)
 			if t2 ~= nil then
-				print('1-2', t2)
 				if t2 > 0 then
 					clock.run(function()
 						clock.sleep(t2 * rate)
-						crow.ii.tt.script(4)
+						shape2:on_side_struck(side2)
 					end)
 				else
-					crow.ii.tt.script(4)
+					shape2:on_side_struck(side2)
 				end
 				shape2.side_levels[side2] = 1
 				vertex1a.level = 1
@@ -193,7 +194,7 @@ function calculate_intersection(shape1, shape2)
 		end
 	end
 			
-	-- draw intersection and calculate intersection area
+	-- calculate intersection area
 	local area = 0
 	local overlap = 0
 	if intersection_points[1] ~= nil then
@@ -206,13 +207,9 @@ function calculate_intersection(shape1, shape2)
 			area = area + point.x * point2.y - point.y * point2.x
 		end
 		overlap = area / math.min(shape1.area, shape2.area)
-		screen.close()
-		screen.level(util.round(15 * overlap))
-		screen.fill()
 	end
 	crow.output[1].volts = 10 * overlap
-	-- TODO: output area / math.min(shape1.area, shape2.area) as a voltage
-	-- (you'll want to precalculate shape areas, and recalculate when radius or n changes)
+	engine.pw(overlap)
 end
 
 shapes = {}
@@ -222,8 +219,21 @@ rate = 1 / 32
 shape_matrix = {}
 
 function init()
-	shapes[1] = Shape.new(4, 30, 70, tau / 200)
-	shapes[2] = Shape.new(4, 30, 55, tau / 300)
+
+	shapes[1] = Shape.new(3, 30, 70, tau / 200)
+	shapes[1].notes = { 28, 40, 47 }
+	shapes[1].on_side_struck = function(self, side)
+		-- crow.ii.tt.script(2)
+		engine.hz(musicutil.note_num_to_freq(self.notes[side]))
+	end
+
+	shapes[2] = Shape.new(5, 30, 55, tau / 300)
+	shapes[2].notes = { 52, 55, 59, 60, 62 }
+	shapes[2].on_side_struck = function(self, side)
+		-- crow.ii.tt.script(4)
+		engine.hz(musicutil.note_num_to_freq(self.notes[side]))
+	end
+
 	n_shapes = 2
 	
 	local m = 1
