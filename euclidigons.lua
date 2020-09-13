@@ -100,31 +100,33 @@ function calculate_intersection(shape1, shape2)
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			local vertex2a = shape2.vertices[side2]
 			local vertex2b = shape2.vertices[side2 % shape2.n + 1]
-			local t1, x1, y1 = calculate_point_segment_intersection(vertex2a, vertex1a, vertex1b)
-			if t1 ~= nil then
-				if t1 > 0 then
-					clock.run(function()
-						clock.sleep(t1 * rate)
+			if not shape1.mute and not shape2.mute then
+				local t1, x1, y1 = calculate_point_segment_intersection(vertex2a, vertex1a, vertex1b)
+				if t1 ~= nil then
+					if t1 > 0 then
+						clock.run(function()
+							clock.sleep(t1 * rate)
+							shape1:on_strike(side1)
+						end)
+					else
 						shape1:on_strike(side1)
-					end)
-				else
-					shape1:on_strike(side1)
+					end
+					shape1.side_levels[side1] = 1
+					vertex2a.level = 1
 				end
-				shape1.side_levels[side1] = 1
-				vertex2a.level = 1
-			end
-			local t2, x2, y2 = calculate_point_segment_intersection(vertex1a, vertex2a, vertex2b)
-			if t2 ~= nil then
-				if t2 > 0 then
-					clock.run(function()
-						clock.sleep(t2 * rate)
+				local t2, x2, y2 = calculate_point_segment_intersection(vertex1a, vertex2a, vertex2b)
+				if t2 ~= nil then
+					if t2 > 0 then
+						clock.run(function()
+							clock.sleep(t2 * rate)
+							shape2:on_strike(side2)
+						end)
+					else
 						shape2:on_strike(side2)
-					end)
-				else
-					shape2:on_strike(side2)
+					end
+					shape2.side_levels[side2] = 1
+					vertex1a.level = 1
 				end
-				shape2.side_levels[side2] = 1
-				vertex1a.level = 1
 			end
 		end
 	end
@@ -135,8 +137,8 @@ rate = 1 / 32
 
 function init()
 
-	shapes[1] = Shape.new(1, 3, 30, 70, tau / 200)
-	shapes[2] = Shape.new(2, 5, 30, 55, tau / 300)
+	shapes[1] = Shape.new(1, 3, 30, 70.5, tau / 200)
+	shapes[2] = Shape.new(2, 5, 30, 55.5, tau / 300)
 	
 	edit_shape = shapes[1]
 
@@ -187,11 +189,18 @@ function redraw()
 	screen.update()
 end
 
+alt = false
 shift = false
 
 function key(n, z)
-	if n == 2 then
+	if n == 1 then
+		alt = z == 1
+	elseif n == 2 then
 		shift = z == 1
+	elseif n == 3 then
+		if z == 1 then
+			edit_shape.mute = not edit_shape.mute
+		end
 	end
 end
 

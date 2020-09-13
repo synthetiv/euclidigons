@@ -4,6 +4,7 @@ function Shape.new(note, n, r, x, rate)
 	local shape = {
 		_note = 1,
 		note_freq = 440,
+		mute = true,
 		_n = 0,
 		area = 0,
 		_r = r,
@@ -96,6 +97,9 @@ function Shape:tick()
 end
 
 function Shape:draw_lines(selected)
+	if self.mute then
+		return
+	end
 	for v = 1, self.n do
 		local vertex1 = self.vertices[v]
 		local vertex2 = self.vertices[v % self.n + 1]
@@ -121,6 +125,17 @@ function Shape:draw_points(selected)
 		screen.circle(vertex.x, vertex.y, 0.5 + level * 3)
 		screen.level(math.floor(6 + level * 9))
 		screen.fill()
+	end
+	if selected then
+		if self.mute then
+			screen.circle(self.x, y_center, 1.55)
+			screen.level(4)
+			screen.stroke()
+		else
+			screen.circle(self.x, y_center, 1.1)
+			screen.level(10)
+			screen.fill()
+		end
 	end
 end
 
