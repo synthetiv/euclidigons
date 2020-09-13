@@ -12,6 +12,8 @@ edit_shape = nil
 shapes = {}
 
 rate = 1 / 32
+tick_notes = 0
+max_tick_notes = 16
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
@@ -60,8 +62,10 @@ end
 
 function handle_strike(shape, side)
 	-- crow.ii.tt.script(2)
-	-- TODO: throttle notes -- PolyPerc can crash SC when asked to create too many synths
-	engine.hz(shape.note_freq)
+	if tick_notes < max_tick_notes then
+		engine.hz(shape.note_freq)
+		tick_notes = tick_notes + 1
+	end
 end
 
 function init()
@@ -75,6 +79,7 @@ function init()
 
 	clock.run(function()
 		while true do
+			tick_notes = 0
 			clock.sync(rate)
 			for s = 1, #shapes do
 				local shape = shapes[s]
