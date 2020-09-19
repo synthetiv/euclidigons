@@ -29,7 +29,6 @@ function get_next_shape(direction)
 			local distance = (shape.x - edit_shape.x) * direction
 			if distance > 0 and distance < best_distance then
 				best_distance = distance
-				print(best_distance)
 				nearest_shape = shape
 			end
 		end
@@ -79,6 +78,96 @@ function init()
 	shapes[2].mute = false
 
 	edit_shape = shapes[1]
+
+	local scale_names = {}
+  for i = 1, #musicutil.SCALES do
+    table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
+  end
+
+  params:add{
+		id = 'scale_mode',
+		name = 'scale mode',
+		type = 'option',
+		options = scale_names,
+		default = 5,
+		action = function(value)
+			scale = musicutil.generate_scale(params:get('root_note'), value, 1)
+			for s = 1, #shapes do
+				shapes[s].note = shapes[s].note
+			end
+		end
+	}
+
+  params:add{
+		id = 'root_note',
+		name = 'root note',
+		type = 'number',
+		min = 0,
+		max = 127,
+		default = 60,
+		formatter = function(param)
+			return musicutil.note_num_to_name(param:get(), true)
+		end,
+		action = function(value)
+			scale = musicutil.generate_scale(value, params:get('scale_mode'), 1)
+			for s = 1, #shapes do
+				shapes[s].note = shapes[s].note
+			end
+		end
+	}
+
+  params:add_separator()
+
+  params:add{
+		id = 'amp',
+		name = 'amp',
+		type = 'control',
+		controlspec = controlspec.new(0, 1, 'lin', 0, 0.5),
+		action = function(x)
+			engine.amp(x)
+		end
+	}
+
+  params:add{
+		id = 'pw',
+		name = 'pulsewidth',
+		type = 'control',
+		controlspec = controlspec.new(0, 100, 'lin', 0, 50, '%'),
+		action = function(value)
+			engine.pw(value * 0.01)
+		end
+	}
+
+  params:add{
+		type = 'control',
+		id = 'release',
+		controlspec = controlspec.new(0.1,3.2,'lin',0,1.2,'s'),
+		action = function(x)
+			engine.release(x)
+		end
+	}
+
+  params:add{
+		id = 'cutoff',
+		name = 'filter cutoff',
+		type = 'control',
+		controlspec = controlspec.new(50, 5000, 'exp', 0, 800, 'hz'),
+		action = function(value)
+			engine.cutoff(value)
+		end
+	}
+
+  params:add{
+		id = 'gain',
+		name = 'filter gain',
+		type = 'control',
+		controlspec = controlspec.new(0, 4, 'lin', 0, 1),
+		action = function(value)
+			engine.gain(value)
+		end
+	}
+
+	params:bang()
 
 	clock.run(function()
 		while true do
