@@ -70,6 +70,9 @@ end
 
 function init()
 
+	norns.enc.sens(1, 4) -- shape selection
+	norns.enc.accel(1, false)
+
 	shapes[1] = Shape.new(1, 3, 30, 70.5, tau / 200)
 	shapes[1].mute = false
 	shapes[2] = Shape.new(2, 5, 30, 55.5, tau / 300)
@@ -160,6 +163,22 @@ function key(n, z)
 				edit_shape.mute = not edit_shape.mute
 			end
 		end
+	end
+	if alt then
+		norns.enc.sens(2, 4) -- note
+		norns.enc.accel(2, false)
+		norns.enc.sens(3, 4) -- octave
+		norns.enc.accel(3, false)
+	elseif shift then
+		norns.enc.sens(2, 1) -- speed
+		norns.enc.accel(2, true)
+		norns.enc.sens(3, 4) -- # of sides
+		norns.enc.accel(3, false)
+	else
+		norns.enc.sens(2, 1) -- position
+		norns.enc.accel(2, true)
+		norns.enc.sens(3, 1) -- size
+		norns.enc.accel(3, false)
 	end
 end
 
