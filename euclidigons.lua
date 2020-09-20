@@ -157,7 +157,7 @@ function init()
 		id = 'cutoff',
 		name = 'filter cutoff',
 		type = 'control',
-		controlspec = controlspec.new(50, 5000, 'exp', 0, 3300, 'hz'),
+		controlspec = controlspec.new(50, 10000, 'exp', 0, 3300, 'hz'),
 		action = function(value)
 			engine.cutoff(value)
 		end
