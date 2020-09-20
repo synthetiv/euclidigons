@@ -218,16 +218,20 @@ function redraw()
 	if edit_shape ~= nil then
 		edit_shape:draw_points(true)
 		if shift or alt then
-			screen.circle(edit_shape.x, y_center, 6)
+			local label = ''
+			if shift then
+				label = edit_shape.n
+			elseif alt then
+				label = edit_shape.note_name
+			end
+			local label_w, label_h = screen.text_extents(label)
+			local label_x = util.clamp(edit_shape.x - label_w / 2, 0, 128 - label_w)
+			screen.rect(label_x - 1, y_center - 1 - label_h / 2, label_w + 2, label_h + 2)
 			screen.level(0)
 			screen.fill()
-			screen.move(edit_shape.x, y_center + 2.5)
+			screen.move(label_x, y_center + label_h / 2)
 			screen.level(15)
-			if shift then
-				screen.text_center(edit_shape.n)
-			elseif alt then
-				screen.text_center(edit_shape.note_name)
-			end
+			screen.text(label)
 		end
 	end
 	screen.update()

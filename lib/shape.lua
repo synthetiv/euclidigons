@@ -131,12 +131,13 @@ function Shape:draw_points(selected)
 		screen.fill()
 	end
 	if selected then
+		local x_clamped = util.clamp(self.x, 0, 128)
 		if self.mute then
-			screen.circle(self.x, y_center, 1.55)
+			screen.circle(x_clamped, y_center, 1.55)
 			screen.level(4)
 			screen.stroke()
 		else
-			screen.circle(self.x, y_center, 1.1)
+			screen.circle(x_clamped, y_center, 1.1)
 			screen.level(10)
 			screen.fill()
 		end
