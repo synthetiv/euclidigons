@@ -22,7 +22,7 @@ shift = false
 
 function get_next_shape(direction)
 	local best_distance = math.huge
-	local nearest_shape = shapes[1]
+	local nearest_shape = nil
 	for s = 1, #shapes do
 		local shape = shapes[s]
 		if shape ~= edit_shape then
@@ -47,7 +47,7 @@ function delete_shape()
 		end
 	end
 	if #shapes > 0 then
-		edit_shape = get_next_shape(-1)
+		edit_shape = get_next_shape(-1) or shapes[1]
 	else
 		edit_shape = nil
 	end
@@ -280,7 +280,7 @@ end
 function enc(n, d)
 	if n == 1 then
 		-- select shape to edit
-		edit_shape = get_next_shape(d)
+		edit_shape = get_next_shape(d) or edit_shape
 	elseif n == 2 then
 		if edit_shape ~= nil then
 			if shift then
