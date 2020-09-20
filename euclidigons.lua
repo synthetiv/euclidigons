@@ -22,7 +22,7 @@ shift = false
 
 function get_next_shape(direction)
 	local best_distance = math.huge
-	local nearest_shape = edit_shape
+	local nearest_shape = shapes[1]
 	for s = 1, #shapes do
 		local shape = shapes[s]
 		if shape ~= edit_shape then
