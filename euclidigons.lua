@@ -54,8 +54,14 @@ function delete_shape()
 end
 
 function insert_shape()
-	-- TODO: randomize parameters?
-	edit_shape = Shape.new(1, 3, 30, 63.5, tau / 200)
+	local note = 1
+	if edit_shape then
+		note = edit_shape.note + 2
+	end
+	local radius = math.random(13, 30)
+	local rate = math.random() * 15 + 10
+	rate = tau / (rate * rate)
+	edit_shape = Shape.new(note, math.random(3, 9), radius, math.random(radius, 128 - radius) + 0.5, rate)
 	table.insert(shapes, edit_shape)
 end
 
@@ -72,12 +78,10 @@ function init()
 	norns.enc.sens(1, 4) -- shape selection
 	norns.enc.accel(1, false)
 
-	shapes[1] = Shape.new(1, 3, 30, 70.5, tau / 200)
-	shapes[1].mute = false
-	shapes[2] = Shape.new(2, 5, 30, 55.5, tau / 300)
-	shapes[2].mute = false
-
-	edit_shape = shapes[1]
+	for s = 1, 2 do
+		insert_shape()
+		edit_shape.mute = false
+	end
 
 	local scale_names = {}
   for i = 1, #musicutil.SCALES do
