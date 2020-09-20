@@ -84,6 +84,8 @@ function init()
     table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
   end
 
+  params:add_separator('scale')
+
   params:add{
 		id = 'scale_mode',
 		name = 'scale mode',
@@ -116,7 +118,7 @@ function init()
 		end
 	}
 
-  params:add_separator()
+  params:add_separator('timbre')
 
   params:add{
 		id = 'amp',
@@ -132,7 +134,7 @@ function init()
 		id = 'pw',
 		name = 'pulsewidth',
 		type = 'control',
-		controlspec = controlspec.new(0, 100, 'lin', 0, 50, '%'),
+		controlspec = controlspec.new(0, 100, 'lin', 0, 47, '%'),
 		action = function(value)
 			engine.pw(value * 0.01)
 		end
@@ -141,7 +143,7 @@ function init()
   params:add{
 		type = 'control',
 		id = 'release',
-		controlspec = controlspec.new(0.1,3.2,'lin',0,1.2,'s'),
+		controlspec = controlspec.new(0.1, 3.2, 'lin', 0, 0.39, 's'),
 		action = function(x)
 			engine.release(x)
 		end
@@ -151,7 +153,7 @@ function init()
 		id = 'cutoff',
 		name = 'filter cutoff',
 		type = 'control',
-		controlspec = controlspec.new(50, 5000, 'exp', 0, 800, 'hz'),
+		controlspec = controlspec.new(50, 5000, 'exp', 0, 3300, 'hz'),
 		action = function(value)
 			engine.cutoff(value)
 		end
@@ -161,7 +163,7 @@ function init()
 		id = 'gain',
 		name = 'filter gain',
 		type = 'control',
-		controlspec = controlspec.new(0, 4, 'lin', 0, 1),
+		controlspec = controlspec.new(0, 4, 'lin', 0, 0.6),
 		action = function(value)
 			engine.gain(value)
 		end
