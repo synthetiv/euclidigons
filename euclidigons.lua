@@ -1,4 +1,20 @@
 -- euclidigons
+--
+-- spinning shapes. where they collide, notes are produced.
+--
+-- E1 = select polygon
+-- E2 = move selected polygon
+-- E3 = resize selected polygon
+-- K3 = mute/unmute selected polygon
+--
+-- K2 + E2 = set rotation speed
+-- K2 + E3 = set number of sides
+--
+-- K1 + E2 = set note
+-- K1 + E3 = set octave
+--
+-- K1 + K2 = delete selected polygon
+-- K1 + K3 = add new polygon
 
 engine.name = 'PolyPerc'
 musicutil = require 'musicutil'
