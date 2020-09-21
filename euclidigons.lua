@@ -16,7 +16,7 @@
 -- K1 + K2 = delete selected polygon
 -- K1 + K3 = add new polygon
 
-engine.name = 'PolyPerc'
+engine.name = 'PrimitiveString'
 musicutil = require 'musicutil'
 
 local Shape = include 'lib/shape'
@@ -84,7 +84,8 @@ end
 function handle_strike(shape, side)
 	-- crow.ii.tt.script(2)
 	if tick_notes < max_tick_notes then
-		engine.hz(shape.note_freq)
+		engine.hz(1, shape.note_freq)
+		engine.gate(1, 1)
 		tick_notes = tick_notes + 1
 	end
 end
@@ -141,51 +142,52 @@ function init()
   params:add_separator('timbre')
 
   params:add{
-		id = 'amp',
-		name = 'amp',
-		type = 'control',
-		controlspec = controlspec.new(0, 1, 'lin', 0, 0.5),
-		action = function(x)
-			engine.amp(x)
+		type = 'option',
+		id = 'env_type',
+		name = 'excitation type',
+		options = { 'pluck', 'bow' },
+		action = function(value)
+			engine.env_type(value)
 		end
 	}
 
   params:add{
-		id = 'pw',
-		name = 'pulsewidth',
+		id = 'amp',
+		name = 'amp',
 		type = 'control',
-		controlspec = controlspec.new(0, 100, 'lin', 0, 47, '%'),
+		controlspec = controlspec.new(0, 1, 'lin', 0, 0.01),
 		action = function(value)
-			engine.pw(value * 0.01)
+			engine.amp(value)
+		end
+	}
+
+  params:add{
+		id = 'wave',
+		name = 'waveshape',
+		type = 'control',
+		controlspec = controlspec.new(0, 1, 'lin', 0, 0),
+		action = function(value)
+			engine.shape(value)
+		end
+	}
+
+  params:add{
+		type = 'control',
+		id = 'attack',
+		name = 'attack',
+		controlspec = controlspec.new(0.01, 3.2, 'lin', 0, 0.01, 's'),
+		action = function(value)
+			engine.attack(value)
 		end
 	}
 
   params:add{
 		type = 'control',
 		id = 'release',
-		controlspec = controlspec.new(0.1, 3.2, 'lin', 0, 0.39, 's'),
-		action = function(x)
-			engine.release(x)
-		end
-	}
-
-  params:add{
-		id = 'cutoff',
-		name = 'filter cutoff',
-		type = 'control',
-		controlspec = controlspec.new(50, 10000, 'exp', 0, 3300, 'hz'),
+		name = 'release',
+		controlspec = controlspec.new(0.01, 3.2, 'lin', 0, 0.39, 's'),
 		action = function(value)
-			engine.cutoff(value)
-		end
-	}
-
-  params:add{
-		id = 'gain',
-		name = 'filter gain',
-		type = 'control',
-		controlspec = controlspec.new(0, 4, 'lin', 0, 0.6),
-		action = function(value)
-			engine.gain(value)
+			engine.release(value)
 		end
 	}
 
