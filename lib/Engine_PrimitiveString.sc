@@ -57,7 +57,7 @@ Engine_PrimitiveString : CroneEngine {
 		controlBus[\release].setSynchronous(0.6);
 		controlBus[\amp].setSynchronous(0.5);
 
-		voices = Array.fill(8, {
+		voices = Array.fill(16, {
 			Synth.new(\string, [
 				\out, context.out_b
 			]);

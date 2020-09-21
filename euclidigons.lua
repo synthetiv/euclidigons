@@ -19,6 +19,9 @@
 engine.name = 'PrimitiveString'
 musicutil = require 'musicutil'
 
+Voice = require 'voice'
+voices = Voice.new(16, Voice.MODE_LRU)
+
 local Shape = include 'lib/shape'
 
 tau = math.pi * 2
@@ -28,8 +31,6 @@ edit_shape = nil
 shapes = {}
 
 rate = 1 / 32
-tick_notes = 0
-max_tick_notes = 16
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
@@ -82,12 +83,16 @@ function insert_shape()
 end
 
 function handle_strike(shape, side)
-	-- crow.ii.tt.script(2)
-	if tick_notes < max_tick_notes then
-		engine.hz(1, shape.note_freq)
-		engine.gate(1, 1)
-		tick_notes = tick_notes + 1
+	local voice = shape.side_voices[side]
+	if not voice then
+		voice = voices:get()
+		shape.side_voices[side] = voice
+		voice.on_steal = function()
+			shape.side_voices[side] = nil
+		end
 	end
+	engine.hz(voice.id, shape.note_freq)
+	engine.gate(voice.id, 1)
 end
 
 function init()
@@ -195,7 +200,6 @@ function init()
 
 	clock.run(function()
 		while true do
-			tick_notes = 0
 			clock.sync(rate)
 			for s = 1, #shapes do
 				local shape = shapes[s]

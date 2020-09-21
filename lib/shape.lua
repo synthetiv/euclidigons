@@ -15,7 +15,8 @@ function Shape.new(note, n, r, x, rate)
 		rate = rate,
 		theta = 0,
 		vertices = {},
-		side_levels = {}
+		side_levels = {},
+		side_voices = {}
 	}
 	setmetatable(shape, Shape)
 	-- initialize with 'n' sides and note 'note'
