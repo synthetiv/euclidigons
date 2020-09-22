@@ -210,8 +210,13 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 	local v2ayt = v2a.y + t * (v2a.ny - v2a.y)
 	local v2bxt = v2b.x + t * (v2b.nx - v2b.x)
 	local v2byt = v2b.y + t * (v2b.ny - v2b.y)
-	if v1xt >= math.min(v2axt, v2bxt) and v1xt <= math.max(v2axt, v2bxt) and v1yt >= math.min(v2ayt, v2byt) and v1yt <= math.max(v2ayt, v2byt) then
-		return t, v1xt, v1yt
+	local v2xmin = math.min(v2axt, v2bxt)
+	local v2xmax = math.max(v2axt, v2bxt)
+	local v2ymin = math.min(v2ayt, v2byt)
+	local v2ymax = math.max(v2ayt, v2byt)
+	if v1xt >= v2xmin and v1xt <= v2xmax and v1yt >= v2ymin and v1yt <= v2ymax then
+		local pos = (v1xt - v2xmin) / (v2xmax - v2xmin)
+		return t, pos, v1xt, v1yt
 	end
 
 	return nil
@@ -247,15 +252,15 @@ function Shape:check_intersection(other)
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			local vertex2a = other.vertices[s]
 			local vertex2b = other.vertices[s % other.n + 1]
-			local t2, x2, y2 = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b)
-			if t2 ~= nil then
-				if t2 > 0 then
+			local t, pos, x, y = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b)
+			if t ~= nil then
+				if t > 0 then
 					clock.run(function()
-						clock.sleep(t2 * rate)
-						handle_strike(other, s)
+						clock.sleep(t * rate)
+						handle_strike(other, s, pos, x, y)
 					end)
 				else
-					handle_strike(other, s)
+					handle_strike(other, s, pos, x, y)
 				end
 				other.side_levels[s] = 1
 				vertex1.level = 1

@@ -20,7 +20,7 @@ engine.name = 'PrimitiveString'
 musicutil = require 'musicutil'
 
 Voice = require 'voice'
-voices = Voice.new(16, Voice.MODE_LRU)
+voices = Voice.new(32, Voice.MODE_LRU)
 
 local Shape = include 'lib/shape'
 
@@ -82,7 +82,7 @@ function insert_shape()
 	table.insert(shapes, edit_shape)
 end
 
-function handle_strike(shape, side)
+function handle_strike(shape, side, pos, x, y)
 	local voice = shape.side_voices[side]
 	if not voice then
 		voice = voices:get()
@@ -92,6 +92,8 @@ function handle_strike(shape, side)
 		end
 	end
 	engine.hz(voice.id, shape.note_freq)
+	engine.pos(voice.id, pos)
+	engine.pan(voice.id, (x / 64) - 1)
 	engine.gate(voice.id, 1)
 end
 
@@ -160,7 +162,7 @@ function init()
 		id = 'amp',
 		name = 'amp',
 		type = 'control',
-		controlspec = controlspec.new(0, 1, 'lin', 0, 0.01),
+		controlspec = controlspec.new(0, 1, 'lin', 0, 0.5),
 		action = function(value)
 			engine.amp(value)
 		end
@@ -170,9 +172,19 @@ function init()
 		id = 'wave',
 		name = 'waveshape',
 		type = 'control',
-		controlspec = controlspec.new(0, 1, 'lin', 0, 0),
+		controlspec = controlspec.new(0, 1, 'lin', 0, 0.5),
 		action = function(value)
 			engine.shape(value)
+		end
+	}
+
+  params:add{
+		id = 'ring',
+		name = 'ringing',
+		type = 'control',
+		controlspec = controlspec.new(0.001, 1, 'exp', 0, 0.2),
+		action = function(value)
+			engine.ring(value)
 		end
 	}
 
