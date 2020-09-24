@@ -232,12 +232,22 @@ function init()
 	}
 
   params:add{
-		id = 'ring',
-		name = 'ringing',
+		id = 'noisiness',
+		name = 'noisiness',
+		type = 'control',
+		controlspec = controlspec.new(0.01, 10, 'exp', 0, 0.25),
+		action = function(value)
+			engine.noisiness(value)
+		end
+	}
+
+  params:add{
+		id = 'ringiness',
+		name = 'ringiness',
 		type = 'control',
 		controlspec = controlspec.new(0.1, 5, 'exp', 0, 0.2),
 		action = function(value)
-			engine.ring(value)
+			engine.ringiness(value)
 		end
 	}
 

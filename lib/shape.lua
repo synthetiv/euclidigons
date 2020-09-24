@@ -257,6 +257,7 @@ function Shape:check_intersection(other)
 		local sides = other.n
 		-- special case for "two-sided" "polygon": that's a line, and if we counted
 		-- both sides, we'd be counting it twice
+		-- TODO: this only applies when trigger mode is in/out
 		if sides == 2 then
 			sides = 1
 		end
