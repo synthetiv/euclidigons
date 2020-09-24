@@ -253,6 +253,16 @@ function init()
 	}
 
   params:add{
+		id = 'brightness',
+		name = 'brightness',
+		type = 'control',
+		controlspec = controlspec.new(0.01, 2, 'exp', 0, 0.7),
+		action = function(value)
+			engine.brightness(value)
+		end
+	}
+
+  params:add{
 		type = 'control',
 		id = 'attack',
 		name = 'attack',

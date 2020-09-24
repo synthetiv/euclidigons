@@ -13,6 +13,7 @@ Engine_PrimitiveString : CroneEngine {
 		controlBus.add(\shape -> Bus.control(context.server));
 		controlBus.add(\noisiness -> Bus.control(context.server));
 		controlBus.add(\ringiness -> Bus.control(context.server));
+		controlBus.add(\brightness -> Bus.control(context.server));
 		controlBus.add(\attack -> Bus.control(context.server));
 		controlBus.add(\release -> Bus.control(context.server));
 		controlBus.add(\amp -> Bus.control(context.server));
@@ -33,6 +34,7 @@ Engine_PrimitiveString : CroneEngine {
 			var shape = In.kr(controlBus[\shape]);
 			var noisiness = In.kr(controlBus[\noisiness]);
 			var ringiness = In.kr(controlBus[\ringiness]);
+			var brightness = In.kr(controlBus[\brightness]);
 			var attack = In.kr(controlBus[\attack]);
 			var release = In.kr(controlBus[\release]);
 			var amp = In.kr(controlBus[\amp]);
@@ -43,15 +45,15 @@ Engine_PrimitiveString : CroneEngine {
 			var vol = Select.kr(envType, [pluck, bow]) * Lag.kr(vel, 0.01).abs.distort;
 
 			// waveforms
-			var posSmooth = Lag.kr(pos.min(1 - pos), 0.01);
+			var posSmooth = Lag.kr(pos.min(1 - pos), 0.01).max(1/32); // should never really be 0, DC is no fun
 			var hzSmooth = Lag.kr(hz, 0.01);
 
 			var pulse = Pulse.ar(hzSmooth, posSmooth);
-			var noise = WhiteNoise.ar(vol * vol * vol * noisiness);
+			var noise = WhiteNoise.ar(vol * vol * vol * vol * noisiness);
 			var nulse = ((pulse + 1) * noise).distort + pulse;
 
 			var saw = Saw.ar(hzSmooth);
-			var comb_delay = posSmooth.max(1/16) / hzSmooth;
+			var comb_delay = posSmooth / hzSmooth;
 			var comb_decay = vol * ringiness;
 			var comb_factor = 0.001 ** (comb_delay / comb_decay); // TODO: can you skip this for better efficiency?
 			var comb = CombL.ar(saw, 1/16, comb_delay, comb_decay) * comb_factor;
@@ -59,7 +61,8 @@ Engine_PrimitiveString : CroneEngine {
 
 			// bring it all together
 			var tone = SelectX.ar(shape, [nulse, caw]);
-			var cutoff = vol.linexp(0, 1, hzSmooth, SampleRate.ir / 2);
+			var nyquist = SampleRate.ir / 2;
+			var cutoff = vol.linexp(0, 1, hzSmooth, brightness * nyquist).min(nyquist);
 			Out.ar(out, Pan2.ar(SVF.ar(tone, cutoff), pan, vol * amp));
 		}).add;
 
@@ -69,6 +72,7 @@ Engine_PrimitiveString : CroneEngine {
 		controlBus[\shape].setSynchronous(-1);
 		controlBus[\noisiness].setSynchronous(0.25);
 		controlBus[\ringiness].setSynchronous(0.2);
+		controlBus[\brightness].setSynchronous(0.7);
 		controlBus[\attack].setSynchronous(0.01);
 		controlBus[\release].setSynchronous(0.6);
 		controlBus[\amp].setSynchronous(0.5);
@@ -146,6 +150,12 @@ Engine_PrimitiveString : CroneEngine {
 			controlBus[\ringiness].set(msg[1]);
 		});
 		
+		this.addCommand("brightness", "f", {
+			arg msg;
+			// msg.postln;
+			controlBus[\brightness].set(msg[1]);
+		});
+
 		this.addCommand("attack", "f", {
 			arg msg;
 			// msg.postln;
