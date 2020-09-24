@@ -50,7 +50,7 @@ Engine_PrimitiveString : CroneEngine {
 			var comb_delay = pos.max(1/16) / hz;
 			var comb_decay = vol * ring;
 			var comb_factor = 0.001 ** (comb_delay / comb_decay);
-			var comb = CombL.ar(saw, 1/16, comb_delay, comb_decay) * comb_factor;
+			var comb = CombN.ar(saw, 1/16, comb_delay, comb_decay) * comb_factor;
 			var caw = comb + saw;
 
 			// bring it all together
