@@ -1,7 +1,10 @@
 Shape = {}
 
+local next_id = 1
+
 function Shape.new(note, n, r, x, rate)
 	local shape = {
+		id = next_id,
 		_note = 1,
 		note_name = 'A3',
 		note_freq = 440,
@@ -22,6 +25,7 @@ function Shape.new(note, n, r, x, rate)
 	shape.r = r
 	shape.n = n
 	shape.note = note
+	next_id = next_id + 1
 	return shape
 end
 
