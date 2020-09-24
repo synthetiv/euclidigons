@@ -1,7 +1,10 @@
 Shape = {}
 
+local next_id = 1
+
 function Shape.new(note, n, r, x, rate)
 	local shape = {
+		id = next_id,
 		_note = 1,
 		note_name = 'A3',
 		note_freq = 440,
@@ -23,6 +26,7 @@ function Shape.new(note, n, r, x, rate)
 	shape.r = r
 	shape.n = n
 	shape.note = note
+	next_id = next_id + 1
 	return shape
 end
 
@@ -147,7 +151,7 @@ end
 
 -- check whether a moving point will intercept a moving line between now and
 -- the next animation frame
-function calculate_point_segment_intersection(v1, v2a, v2b)
+function calculate_point_segment_intersection(v1, v2a, v2b, x_center)
 	-- two vectors expressible in terms of t (time), using nx,ny and x,y: v2a to v1, and v2a to v2b
 	-- if their cross product is zero at any point in time, that's when they collide
 
@@ -203,19 +207,28 @@ function calculate_point_segment_intersection(v1, v2a, v2b)
 		end
 	end
 
-	-- now check that, at time t, v1 actually intersects with line segment v2a v2b
+	-- now check that, at time t, v1 actually intersects with line segment v2a v2b (as opposed to
+	-- somewhere else on the line described by the two points)
 	local v1xt  =  v1.x + t * ( v1.nx - v1.x)
 	local v1yt  =  v1.y + t * ( v1.ny - v1.y)
 	local v2axt = v2a.x + t * (v2a.nx - v2a.x)
 	local v2ayt = v2a.y + t * (v2a.ny - v2a.y)
 	local v2bxt = v2b.x + t * (v2b.nx - v2b.x)
 	local v2byt = v2b.y + t * (v2b.ny - v2b.y)
-	local v2xmin = math.min(v2axt, v2bxt)
-	local v2xmax = math.max(v2axt, v2bxt)
-	local v2ymin = math.min(v2ayt, v2byt)
-	local v2ymax = math.max(v2ayt, v2byt)
-	if v1xt >= v2xmin and v1xt <= v2xmax and v1yt >= v2ymin and v1yt <= v2ymax then
-		local pos = (v1xt - v2xmin) / (v2xmax - v2xmin)
+	local pos = (v1xt - math.min(v2axt, v2bxt)) / math.abs(v2axt - v2bxt)
+	if pos >= 0 and pos <= 1 then
+		-- it's a hit! was v1 moving into or out of the shape whose vertices include v2a and v2b?
+		-- check that the shape's center point and (v1.nx, v1.ny) are on the same side of the line
+		-- described by v2a and v2b, by checking the signs of cross products
+		local center_product = (v2bxt - v2axt) * (y_center - v2ayt) - (v2byt - v2ayt) * (x_center - v2axt)
+		local v1_product = (v2bxt - v2axt) * (v1.ny - v2ayt) - (v2byt - v2ayt) * (v1.nx - v2axt)
+		local inward = (center_product < 0 and v1_product < 0) or (center_product > 0) and (v1_product > 0)
+		-- skip inner- or outer-moving collisions if the params tell us to
+		if (trigger_style == s_IN) and not inward then
+			return nil
+		elseif (trigger_style == s_OUT) and inward then
+			return nil
+		end
 		return t, pos, v1xt, v1yt
 	end
 
@@ -227,7 +240,7 @@ end
 function Shape:check_intersection(other)
 
 	-- if either shape is muted, skip calculation
-	if self.mute or other.mute then
+	if (mute_style == m_BOTH and self.mute) or other.mute then
 		return
 	end
 
@@ -252,7 +265,7 @@ function Shape:check_intersection(other)
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			local vertex2a = other.vertices[s]
 			local vertex2b = other.vertices[s % other.n + 1]
-			local t, pos, x, y = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b)
+			local t, pos, x, y = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b, other.x)
 			if t ~= nil then
 				if t > 0 then
 					clock.run(function()

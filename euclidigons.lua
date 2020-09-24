@@ -37,20 +37,49 @@ scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 alt = false
 shift = false
 
+s_IN = 1
+s_OUT = 2
+s_BOTH = 3
+trigger_style = s_IN
+
+m_BOTH = 1
+m_NOTE = 2
+mute_style = m_BOTH
+
+--- sorting callback for Shapes
+-- @param a shape A
+-- @param b shape B
+-- @return true if shape A should be ordered first, based on criteria: position, size, and which
+--         shape was created first
+function compare_shapes(a, b)
+	if a.x == b.x then
+		if a.r == b.r then
+			return a.id < b.id
+		end
+		return a.r < b.r
+	end
+	return a.x < b.x
+end
+
+--- find the 'next' shape before or after `edit_shape`, ordering shapes as described above
+-- @param direction 1 or -1
+-- @return a Shape, or nil if `edit_shape` is the first or last shape
 function get_next_shape(direction)
-	local best_distance = math.huge
-	local nearest_shape = nil
-	for s = 1, #shapes do
-		local shape = shapes[s]
-		if shape ~= edit_shape then
-			local distance = (shape.x - edit_shape.x) * direction
-			if distance > 0 and distance < best_distance then
-				best_distance = distance
-				nearest_shape = shape
+	table.sort(shapes, compare_shapes)
+	local found = false
+	if direction > 0 then
+		for s = 1, #shapes do
+			if shapes[s] ~= edit_shape and not compare_shapes(shapes[s], edit_shape) then
+				return shapes[s]
+			end
+		end
+	else
+		for s = #shapes, 1, -1 do
+			if shapes[s] ~= edit_shape and compare_shapes(shapes[s], edit_shape) then
+				return shapes[s]
 			end
 		end
 	end
-	return nearest_shape
 end
 
 function delete_shape()
@@ -111,6 +140,30 @@ function init()
   for i = 1, #musicutil.SCALES do
     table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
   end
+
+  params:add_separator('behavior')
+
+  params:add{
+		id = 'trigger_style',
+		name = 'trigger style',
+		type = 'option',
+		options = { 'in only', 'out only', 'in/out' },
+		default = trigger_style,
+		action = function(value)
+			trigger_style = value
+		end
+	}
+
+  params:add{
+		id = 'mute_style',
+		name = 'mute style',
+		type = 'option',
+		options = { 'absolute', 'own note only' },
+		default = mute_style,
+		action = function(value)
+			mute_style = value
+		end
+	}
 
   params:add_separator('scale')
 
