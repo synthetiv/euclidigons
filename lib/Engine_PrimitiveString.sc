@@ -51,7 +51,7 @@ Engine_PrimitiveString : CroneEngine {
 			var nulse = (pulse * noise).distort + pulse;
 
 			var saw = Saw.ar(hzSmooth);
-			var comb_delay = pos.max(1/16) / hzSmooth;
+			var comb_delay = posSmooth.max(1/16) / hzSmooth;
 			var comb_decay = vol * ringiness;
 			var comb_factor = 0.001 ** (comb_delay / comb_decay); // TODO: can you skip this for better efficiency?
 			var comb = CombL.ar(saw, 1/16, comb_delay, comb_decay) * comb_factor;
