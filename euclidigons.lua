@@ -36,10 +36,14 @@ scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 alt = false
 shift = false
 
-s_IN_OUT = 1
-s_IN = 2
-s_OUT = 3
-trigger_style = s_IN_OUT
+s_IN = 1
+s_OUT = 2
+s_BOTH = 3
+trigger_style = s_IN
+
+m_BOTH = 1
+m_NOTE = 2
+mute_style = m_BOTH
 
 --- sorting callback for Shapes
 -- @param a shape A
@@ -134,10 +138,21 @@ function init()
 		id = 'trigger_style',
 		name = 'trigger style',
 		type = 'option',
-		options = { 'in/out', 'in only', 'out only' },
-		default = 2,
+		options = { 'in only', 'out only', 'in/out' },
+		default = trigger_style,
 		action = function(value)
 			trigger_style = value
+		end
+	}
+
+  params:add{
+		id = 'mute_style',
+		name = 'mute style',
+		type = 'option',
+		options = { 'absolute', 'own note only' },
+		default = mute_style,
+		action = function(value)
+			mute_style = value
 		end
 	}
 

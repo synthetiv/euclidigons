@@ -239,7 +239,7 @@ end
 function Shape:check_intersection(other)
 
 	-- if either shape is muted, skip calculation
-	if self.mute or other.mute then
+	if (mute_style == m_BOTH and self.mute) or other.mute then
 		return
 	end
 
