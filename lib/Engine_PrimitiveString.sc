@@ -48,7 +48,7 @@ Engine_PrimitiveString : CroneEngine {
 
 			var pulse = Pulse.ar(hzSmooth, posSmooth);
 			var noise = WhiteNoise.ar(vol * vol * vol * noisiness);
-			var nulse = (pulse * noise).distort + pulse;
+			var nulse = ((pulse + 1) * noise).distort + pulse;
 
 			var saw = Saw.ar(hzSmooth);
 			var comb_delay = posSmooth.max(1/16) / hzSmooth;
