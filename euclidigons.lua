@@ -36,6 +36,11 @@ scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 alt = false
 shift = false
 
+s_IN_OUT = 1
+s_IN = 2
+s_OUT = 3
+trigger_style = s_IN_OUT
+
 --- sorting callback for Shapes
 -- @param a shape A
 -- @param b shape B
@@ -101,8 +106,7 @@ function insert_shape()
 	table.insert(shapes, edit_shape)
 end
 
-function handle_strike(shape, side)
-	-- crow.ii.tt.script(2)
+function handle_strike(shape, side, pos)
 	if tick_notes < max_tick_notes then
 		engine.hz(shape.note_freq)
 		tick_notes = tick_notes + 1
@@ -123,6 +127,19 @@ function init()
   for i = 1, #musicutil.SCALES do
     table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
   end
+
+  params:add_separator('behavior')
+
+  params:add{
+		id = 'trigger_style',
+		name = 'trigger style',
+		type = 'option',
+		options = { 'in/out', 'in only', 'out only' },
+		default = 2,
+		action = function(value)
+			trigger_style = value
+		end
+	}
 
   params:add_separator('scale')
 
