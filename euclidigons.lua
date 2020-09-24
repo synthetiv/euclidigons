@@ -111,7 +111,7 @@ function insert_shape()
 	table.insert(shapes, edit_shape)
 end
 
-function handle_strike(shape, side, pos, x, y)
+function handle_strike(shape, side, pos, vel, x, y)
 	local voice = shape.side_voices[side]
 	if not voice then
 		voice = voices:get()
@@ -123,7 +123,8 @@ function handle_strike(shape, side, pos, x, y)
 	engine.hz(voice.id, shape.note_freq)
 	engine.pos(voice.id, pos)
 	engine.pan(voice.id, (x / 64) - 1)
-	engine.gate(voice.id, 1)
+	engine.vel(voice.id, vel / 20)
+	engine.trig(voice.id)
 end
 
 function init()

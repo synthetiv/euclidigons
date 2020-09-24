@@ -24,7 +24,7 @@ Engine_PrimitiveString : CroneEngine {
 			t_trig = 0,
 			gate = 0,
 			hz = 220,
-			vel = 0.5,
+			vel = 0,
 			pos = 0.5,
 			pan = 0;
 
@@ -38,9 +38,9 @@ Engine_PrimitiveString : CroneEngine {
 			var amp = In.kr(controlBus[\amp]);
 
 			// envelopes
-			var pluck = EnvGen.ar(Env.perc(0.01, release), t_trig);
+			var pluck = EnvGen.ar(Env.perc(attack, release), t_trig);
 			var bow = EnvGen.ar(Env.asr(attack, 1, release), gate);
-			var vol = Select.kr(envType, [pluck, bow]) * vel;
+			var vol = Select.kr(envType, [pluck, bow]) * Lag.kr(vel, 0.01).abs.distort;
 
 			// waveforms
 			var posSmooth = Lag.kr(pos.min(1 - pos), 0.01);
@@ -79,12 +79,18 @@ Engine_PrimitiveString : CroneEngine {
 			]);
 		});
 		
+		this.addCommand("trig", "i", {
+			arg msg;
+			var voice = voices[msg[1] - 1];
+			// msg.postln;
+			voice.set(\t_trig, 1);
+		});
+
 		this.addCommand("gate", "ii", {
 			arg msg;
 			var voice = voices[msg[1] - 1];
 			var state = msg[2];
 			// msg.postln;
-			voice.set(\t_trig, state);
 			voice.set(\gate, state);
 		});
 		

@@ -151,11 +151,11 @@ end
 
 -- check whether a moving point will intercept a moving line between now and
 -- the next animation frame
-function calculate_point_segment_intersection(v1, v2a, v2b, x_center)
+function calculate_point_segment_intersection(v1, v2a, v2b, x_center, n)
 	-- two vectors expressible in terms of t (time), using nx,ny and x,y: v2a to v1, and v2a to v2b
 	-- if their cross product is zero at any point in time, that's when they collide
 
-	local t
+	local t, vel
 
 	if v2a.nx == v2a.x and v2a.ny == v2a.y and v2b.nx == v2b.x and v2b.ny == v2b.y then
 		-- special case if v2a and v2b aren't moving: cross product won't involve t^2, so quadratic
@@ -166,10 +166,15 @@ function calculate_point_segment_intersection(v1, v2a, v2b, x_center)
 		local dd1y = v1.ny - v1.y
 		local d2x = v2b.x - v2a.x
 		local d2y = v2b.y - v2a.y
-		t = (d1y * d2x - d1x * d2y) / (dd1x * d2y - dd1y * d2x)
+		-- coefficients of t and t^0, just like below ('a' would be 0)
+		local b = dd1x * d2y - dd1y * d2x
+		local c = d1x * d2y - d1y * d2x
+		t = -c / b
 		if t < 0 or t > 1 then
 			return nil
 		end
+		-- velocity is, as below, the derivative of the cross product
+		vel = b
 	else
 		-- if everything's moving, we'll have to do this the hard way
 
@@ -205,6 +210,8 @@ function calculate_point_segment_intersection(v1, v2a, v2b, x_center)
 		if t < 0 or t > 1 then
 			return nil
 		end
+		-- velocity is the derivative of the cross product
+		vel = 2 * a * t + b
 	end
 
 	-- now check that, at time t, v1 actually intersects with line segment v2a v2b (as opposed to
@@ -218,18 +225,22 @@ function calculate_point_segment_intersection(v1, v2a, v2b, x_center)
 	local pos = (v1xt - math.min(v2axt, v2bxt)) / math.abs(v2axt - v2bxt)
 	if pos >= 0 and pos <= 1 then
 		-- it's a hit! was v1 moving into or out of the shape whose vertices include v2a and v2b?
-		-- check that the shape's center point and (v1.nx, v1.ny) are on the same side of the line
-		-- described by v2a and v2b, by checking the signs of cross products
-		local center_product = (v2bxt - v2axt) * (y_center - v2ayt) - (v2byt - v2ayt) * (x_center - v2axt)
-		local v1_product = (v2bxt - v2axt) * (v1.ny - v2ayt) - (v2byt - v2ayt) * (v1.nx - v2axt)
-		local inward = (center_product < 0 and v1_product < 0) or (center_product > 0) and (v1_product > 0)
-		-- skip inner- or outer-moving collisions if the params tell us to
-		if (trigger_style == s_IN) and not inward then
-			return nil
-		elseif (trigger_style == s_OUT) and inward then
-			return nil
+		-- but first: a special case for 2-sided 'polygons' (lines), where the center product below
+		-- "should" be exactly zero, but may not be due to rounding error: there's no such thing as
+		-- moving into or out of the shape anyway, so we should count all collisions
+		if n > 2 then
+			-- find direction (inward or outward) by comparing the signs of the velocity and the cross
+			-- product between the side and the shape's center point
+			local center_product = (x_center - v2axt) * (v2byt - v2ayt) - (y_center - v2ayt) * (v2bxt - v2axt)
+			local inward = (vel > 0 and center_product > 0) or (vel < 0 and center_product < 0)
+			-- skip inner- or outer-moving collisions if the params tell us to
+			if (trigger_style == s_IN) and not inward then
+				return nil
+			elseif (trigger_style == s_OUT) and inward then
+				return nil
+			end
 		end
-		return t, pos, v1xt, v1yt
+		return t, pos, vel, v1xt, v1yt
 	end
 
 	return nil
@@ -257,7 +268,6 @@ function Shape:check_intersection(other)
 		local sides = other.n
 		-- special case for "two-sided" "polygon": that's a line, and if we counted
 		-- both sides, we'd be counting it twice
-		-- TODO: this only applies when trigger mode is in/out
 		if sides == 2 then
 			sides = 1
 		end
@@ -266,15 +276,15 @@ function Shape:check_intersection(other)
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			local vertex2a = other.vertices[s]
 			local vertex2b = other.vertices[s % other.n + 1]
-			local t, pos, x, y = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b, other.x)
+			local t, pos, vel, x, y = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b, other.x, other.n)
 			if t ~= nil then
 				if t > 0 then
 					clock.run(function()
 						clock.sleep(t * rate)
-						handle_strike(other, s, pos, x, y)
+						handle_strike(other, s, pos, vel, x, y)
 					end)
 				else
-					handle_strike(other, s, pos, x, y)
+					handle_strike(other, s, pos, vel, x, y)
 				end
 				other.side_levels[s] = 1
 				vertex1.level = 1
