@@ -235,7 +235,7 @@ function init()
 		id = 'ring',
 		name = 'ringing',
 		type = 'control',
-		controlspec = controlspec.new(0.001, 1, 'exp', 0, 0.2),
+		controlspec = controlspec.new(0.1, 5, 'exp', 0, 0.2),
 		action = function(value)
 			engine.ring(value)
 		end

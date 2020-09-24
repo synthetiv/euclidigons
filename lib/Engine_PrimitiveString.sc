@@ -47,10 +47,11 @@ Engine_PrimitiveString : CroneEngine {
 			var pulse = Pulse.ar(hzSmooth, posSmooth);
 
 			var saw = Saw.ar(hzSmooth);
-			var comb_delay = pos.max(1/16) / hz;
+			var comb_delay = pos.max(1/16) / hzSmooth;
 			var comb_decay = vol * ring;
 			var comb_factor = 0.001 ** (comb_delay / comb_decay);
-			var comb = CombN.ar(saw, 1/16, comb_delay, comb_decay) * comb_factor;
+			// TODO: scale by (in)harmonicity: pos values of 0.5 and 0.0 are quiet, between that = louder...?
+			var comb = CombL.ar(saw, 1/16, comb_delay, comb_decay) * comb_factor;
 			var caw = comb + saw;
 
 			// bring it all together
