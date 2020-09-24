@@ -101,7 +101,7 @@ end
 function insert_shape()
 	local note = 1
 	if edit_shape then
-		note = edit_shape.note + 2
+		note = edit_shape.note - 4
 	end
 	local radius = math.random(13, 30)
 	local rate = math.random() * 15 + 10
