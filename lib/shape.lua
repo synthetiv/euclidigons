@@ -109,10 +109,17 @@ function Shape:draw_lines(selected)
 	if self.mute then
 		return
 	end
-	for v = 1, self.n do
+	local n = self.n
+	if n == 2 then
+		n = 1
+	end
+	for v = 1, n do
 		local vertex1 = self.vertices[v]
 		local vertex2 = self.vertices[v % self.n + 1]
 		local level = self.side_levels[v]
+		if n == 2 then
+			level = math.max(self.side_levels[v + 1])
+		end
 		if selected then
 			level = level * 0.7 + 0.3
 		end
