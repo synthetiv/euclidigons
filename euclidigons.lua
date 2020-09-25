@@ -20,7 +20,28 @@ engine.name = 'PrimitiveString'
 musicutil = require 'musicutil'
 
 Voice = require 'voice'
-voices = Voice.new(32, Voice.MODE_LRU)
+voice_manager = Voice.new(27, Voice.MODE_LRU)
+function voice_remove(self)
+	-- find and remove self from shape's voice table
+	local shape_voices = self.shape.voices
+	local found = false
+	for v = 1, #shape_voices do
+		if shape_voices[v] == self then
+			found = true
+		end
+		if found then
+			shape_voices[v] = shape_voices[v + 1]
+		end
+	end
+end
+function voice_release(self)
+	engine.gate(self.id, 0)
+	voice_remove(self)
+end
+for v = 1, 27 do
+	voice_manager.style.slots[v].on_release = voice_release
+	voice_manager.style.slots[v].on_steal = voice_remove
+end
 
 local Shape = include 'lib/shape'
 
@@ -83,7 +104,9 @@ function get_next_shape(direction)
 end
 
 function delete_shape()
+	local own_voices = edit_shape.voices
 	local found = false
+	-- remove edit_shape from shapes table, and remove references from voices table
 	for s = 1, #shapes do
 		if shapes[s] == edit_shape then
 			found = true
@@ -91,7 +114,22 @@ function delete_shape()
 		if found then
 			shapes[s] = shapes[s + 1]
 		end
+		if shapes[s] then -- this will be nil for the final value of `s`
+			local other_id = shapes[s].id
+			local other_voices = shapes[s].voices
+			-- release voices played by edit_shape
+			for v, voice in ipairs(other_voices) do
+				if voice.other == edit_shape then
+					voice:release()
+				end
+			end
+		end
 	end
+	-- release edit_shape's own voices
+	for v, voice in ipairs(own_voices) do
+		voice:release()
+	end
+	-- select another shape
 	if #shapes > 0 then
 		edit_shape = get_next_shape(-1) or shapes[1]
 	else
@@ -111,20 +149,18 @@ function insert_shape()
 	table.insert(shapes, edit_shape)
 end
 
-function handle_strike(shape, side, pos, vel, x, y)
-	local voice = shape.side_voices[side]
-	if not voice then
-		voice = voices:get()
-		shape.side_voices[side] = voice
-		voice.on_steal = function()
-			shape.side_voices[side] = nil
-		end
-	end
+function handle_strike(shape, side, pos, vel, x, y, other, vertex)
+	local voice = voice_manager:get()
+	voice.shape = shape
+	voice.side = side
+	voice.other = other
+	voice.vertex = vertex
 	engine.hz(voice.id, shape.note_freq)
 	engine.pos(voice.id, pos)
 	engine.pan(voice.id, (x / 64) - 1)
 	engine.vel(voice.id, vel / 20)
 	engine.trig(voice.id)
+	table.insert(shape.voices, voice)
 end
 
 function init()

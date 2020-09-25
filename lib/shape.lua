@@ -19,7 +19,7 @@ function Shape.new(note, n, r, x, rate)
 		theta = 0,
 		vertices = {},
 		side_levels = {},
-		side_voices = {}
+		voices = {}
 	}
 	setmetatable(shape, Shape)
 	-- initialize with 'n' sides and note 'note'
@@ -281,10 +281,10 @@ function Shape:check_intersection(other)
 				if t > 0 then
 					clock.run(function()
 						clock.sleep(t * rate)
-						handle_strike(other, s, pos, vel, x, y)
+						handle_strike(other, s, pos, vel, x, y, self, v)
 					end)
 				else
-					handle_strike(other, s, pos, vel, x, y)
+					handle_strike(other, s, pos, vel, x, y, self, v)
 				end
 				other.side_levels[s] = 1
 				vertex1.level = 1
