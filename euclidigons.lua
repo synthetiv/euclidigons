@@ -431,7 +431,7 @@ function enc(n, d)
 				edit_shape.note = edit_shape.note + d
 			else
 				-- set position
-				edit_shape.delta_x = edit_shape.delta_x + d
+				edit_shape.delta_x = edit_shape.delta_x + d * 0.5
 			end
 		end
 	elseif n == 3 then
@@ -444,7 +444,7 @@ function enc(n, d)
 				edit_shape.note = edit_shape.note + d * #scale
 			else
 				-- set size
-				edit_shape.r = math.max(edit_shape.r + d, 1)
+				edit_shape.r = math.max(edit_shape.r + d * 0.5, 1)
 			end
 		end
 	end
