@@ -44,11 +44,18 @@ Engine_PrimitiveString : CroneEngine {
 			// envelopes
 			var pluck = EnvGen.ar(Env.perc(attack, release), t_trig);
 			var bow = EnvGen.ar(Env.asr(attack, 1, release), gate);
-			var vol = Select.kr(envType, [pluck, bow]) * Lag.kr(vel, 0.01).abs.distort;
+			var env = Select.kr(envType, [pluck, bow]);
+
+			// derive parameter smoothing time from envelope, so we can avoid smoothing params when silent
+			// -- which can cause pops/thumps when new notes are triggered
+			var lagTime = 0.01 * (env > 0.0001);
+
+			// overall volume curve
+			var vol = env * Lag.kr(vel, lagTime).pow(1.5).abs.distort;
 
 			// waveforms
-			var posSmooth = Lag.kr(pos.min(1 - pos), 0.01).max(1/32); // should never really be 0, DC is no fun
-			var hzSmooth = Lag.kr(hz, 0.01);
+			var posSmooth = Lag.kr(pos.min(1 - pos), lagTime).max(1/32); // should never really be 0, DC is no fun
+			var hzSmooth = Lag.kr(hz, lagTime);
 
 			var pulse = Pulse.ar(hzSmooth, posSmooth);
 			var noise = WhiteNoise.ar(vol * vol * vol * vol * noiseAmount);
