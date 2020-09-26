@@ -160,7 +160,7 @@ function handle_strike(shape, side, pos, vel, x, y, other, vertex)
 	engine.hz(voice.id, shape.note_freq)
 	engine.pos(voice.id, pos)
 	engine.pan(voice.id, (x / 64) - 1)
-	engine.vel(voice.id, vel / 20)
+	engine.vel(voice.id, vel / 16)
 	engine.trig(voice.id)
 	table.insert(shape.voices, voice)
 end

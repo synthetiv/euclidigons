@@ -39,7 +39,7 @@ Engine_PrimitiveString : CroneEngine {
 			var brightness = In.kr(controlBus[\brightness]);
 			var attack = In.kr(controlBus[\attack]);
 			var release = In.kr(controlBus[\release]);
-			var amp = In.kr(controlBus[\amp]);
+			var amp = In.kr(controlBus[\amp]) * 0.25;
 
 			// envelopes
 			var pluck = EnvGen.ar(Env.perc(attack, release), t_trig);
