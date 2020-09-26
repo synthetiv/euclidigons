@@ -17,10 +17,11 @@
 -- K1 + K3 = add new polygon
 
 engine.name = 'PrimitiveString'
+num_voices = 19
 musicutil = require 'musicutil'
 
 Voice = require 'voice'
-voice_manager = Voice.new(27, Voice.MODE_LRU)
+voice_manager = Voice.new(num_voices, Voice.MODE_LRU)
 function voice_remove(self)
 	-- find and remove self from shape's voice table
 	local shape_voices = self.shape.voices
@@ -38,7 +39,7 @@ function voice_release(self)
 	engine.gate(self.id, 0)
 	voice_remove(self)
 end
-for v = 1, 27 do
+for v = 1, num_voices do
 	voice_manager.style.slots[v].on_release = voice_release
 	voice_manager.style.slots[v].on_steal = voice_remove
 end
@@ -145,6 +146,7 @@ function insert_shape()
 	local radius = math.random(13, 30)
 	local rate = math.random() * 15 + 10
 	rate = tau / (rate * rate)
+	rate = rate * (math.random(2) - 1.5) * 2 -- randomize sign
 	edit_shape = Shape.new(note, math.random(3, 9), radius, math.random(radius, 128 - radius) + 0.5, rate)
 	table.insert(shapes, edit_shape)
 end
@@ -239,16 +241,6 @@ function init()
   params:add_separator('timbre')
 
   params:add{
-		type = 'option',
-		id = 'env_type',
-		name = 'excitation type',
-		options = { 'pluck', 'bow' },
-		action = function(value)
-			engine.env_type(value)
-		end
-	}
-
-  params:add{
 		id = 'amp',
 		name = 'amp',
 		type = 'control',
@@ -260,31 +252,31 @@ function init()
 
   params:add{
 		id = 'wave',
-		name = 'waveshape',
+		name = 'wave (pulse/saw)',
 		type = 'control',
 		controlspec = controlspec.new(0, 1, 'lin', 0, 0.5),
 		action = function(value)
-			engine.shape(value)
+			engine.wave(value)
 		end
 	}
 
   params:add{
-		id = 'noisiness',
-		name = 'noisiness',
+		id = 'noise',
+		name = 'pulse noise',
 		type = 'control',
 		controlspec = controlspec.new(0.01, 10, 'exp', 0, 0.25),
 		action = function(value)
-			engine.noisiness(value)
+			engine.noise(value)
 		end
 	}
 
   params:add{
-		id = 'ringiness',
-		name = 'ringiness',
+		id = 'comb',
+		name = 'saw comb',
 		type = 'control',
 		controlspec = controlspec.new(0.1, 5, 'exp', 0, 0.2),
 		action = function(value)
-			engine.ringiness(value)
+			engine.comb(value)
 		end
 	}
 
@@ -302,7 +294,7 @@ function init()
 		type = 'control',
 		id = 'attack',
 		name = 'attack',
-		controlspec = controlspec.new(0.01, 3.2, 'lin', 0, 0.01, 's'),
+		controlspec = controlspec.new(0.005, 3, 'exp', 0, 0.005, 's'),
 		action = function(value)
 			engine.attack(value)
 		end
@@ -312,7 +304,7 @@ function init()
 		type = 'control',
 		id = 'release',
 		name = 'release',
-		controlspec = controlspec.new(0.01, 3.2, 'lin', 0, 0.39, 's'),
+		controlspec = controlspec.new(0.01, 7, 'exp', 0, 0.39, 's'),
 		action = function(value)
 			engine.release(value)
 		end
