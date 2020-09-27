@@ -44,7 +44,7 @@ for v = 1, num_voices do
 	voice_manager.style.slots[v].on_steal = voice_remove
 end
 
-local Shape = include 'lib/shape'
+Shape = include 'lib/shape'
 
 tau = math.pi * 2
 y_center = 32.5
