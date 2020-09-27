@@ -2,6 +2,8 @@
 
 Sequencer for monome norns, imagined by and realized in collaboration with @setfield
 
+![screenshot](https://synthetiv.github.io/euclidigons/screenshot.png)
+
 ## installation
 
 - Download [the latest version](https://github.com/synthetiv/euclidigons/archive/main.zip) from GitHub
