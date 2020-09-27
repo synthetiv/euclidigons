@@ -51,7 +51,7 @@ Engine_PrimitiveString : CroneEngine {
 			var lagTime = 0.01 * (env > 0.0001);
 
 			// overall volume curve
-			var vol = env * Lag.kr(vel, lagTime).pow(1.5).abs.distort;
+			var vol = env * Lag.kr(vel, lagTime).clip(0, 1);
 
 			// waveforms
 			var posSmooth = Lag.kr(pos.min(1 - pos), lagTime).max(1/32); // should never really be 0, DC is no fun
