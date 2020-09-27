@@ -149,10 +149,12 @@ function insert_shape()
 		return
 	end
 	local note = 1
+	local output_mode = o_ENGINE
 	local midi_device = 1
 	local midi_channel = 1
 	if edit_shape then
 		note = edit_shape.note - 4
+		output_mode = edit_shape.output_mode
 		midi_device = edit_shape.midi_device
 		midi_channel = edit_shape.midi_channel
 	end
@@ -161,6 +163,7 @@ function insert_shape()
 	rate = tau / (rate * rate)
 	rate = rate * (math.random(2) - 1.5) * 2 -- randomize sign
 	edit_shape = Shape.new(note, math.random(3, 9), radius, math.random(radius, 128 - radius) + 0.5, rate)
+	edit_shape.output_mode = output_mode
 	edit_shape.midi_device = midi_device
 	edit_shape.midi_channel = midi_channel
 	table.insert(shapes, edit_shape)
@@ -490,25 +493,23 @@ function redraw()
 		elseif alt then
 			local y = 10
 			screen.font_face(2)
-			if output_mode == nil then
-				local value = ''
-				if edit_shape.output_mode == o_ENGINE then
-					value = 'internal'
-				elseif edit_shape.output_mode == o_MIDI then
-					value = 'midi'
-				elseif edit_shape.output_mode == o_BOTH then
-					value = 'int+midi'
+			if output_mode == nil or midi_out.device == nil then
+				if output_mode == nil and edit_shape.output_mode == o_ENGINE then
+					draw_setting(y, 'out:', 'internal')
+				else
+					local label = 'out:'
+					if (output_mode or edit_shape.output_mode) == o_BOTH then
+						label = 'out:  int +'
+					end
+					draw_setting(y, label, midi_out.devices[midi_out.device or edit_shape.midi_device].name)
 				end
-				draw_setting(y, 'out:', value)
 				y = y + 10
-			end
-			if edit_shape.output_mode ~= o_ENGINE then
-				if midi_out.device == nil then
-					draw_setting(y, 'device:', midi_out.devices[edit_shape.midi_device].name)
-					y = y + 10
-				end
 				if midi_out.channel == nil then
-					draw_setting(y, 'channel:', edit_shape.midi_channel)
+					if edit_shape.output_mode == o_ENGINE then
+						draw_setting(y, 'channel:', '-')
+					else
+						draw_setting(y, 'channel:', edit_shape.midi_channel)
+					end
 					y = y + 10
 				end
 			end
@@ -593,16 +594,16 @@ function enc(n, d)
 				-- set number of sides
 				edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
 			elseif alt then
-				if output_mode == o_ENGINE or ((output_mode == o_MIDI or output_mode == o_BOTH) and midi_out.device ~= nil and midi_out.channel ~= nil) then
+				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
 					-- device and channel are either fixed or irrelevant; set octave
 					edit_shape.note = edit_shape.note + d * #scale
 				else
 					local next_mode = edit_shape.output_mode + d
-					local can_change_mode = output_mode == nil and (next_mode >= 1 and next_mode <= 3)
+					local can_change_mode = output_mode == nil and (next_mode >= 1 and next_mode <= 2)
 					local next_device = edit_shape.midi_device + d
-					local can_change_device = midi_out.device == nil and edit_shape.output_mode ~= o_ENGINE and (next_device >= 1 and next_device <= 4)
+					local can_change_device = midi_out.device == nil and (output_mode ~= nil or edit_shape.output_mode ~= o_ENGINE) and (next_device >= 1 and next_device <= 4)
 					local next_channel = edit_shape.midi_channel + d
-					local can_change_channel = midi_out.channel == nil and edit_shape.output_mode ~= o_ENGINE and (next_channel >= 1 and next_channel <= 16)
+					local can_change_channel = midi_out.channel == nil and (output_mode ~= nil or edit_shape.output_mode ~= o_ENGINE) and (next_channel >= 1 and next_channel <= 16)
 					if can_change_channel then
 						edit_shape.midi_channel = (next_channel - 1) % 16 + 1
 					elseif can_change_device then
