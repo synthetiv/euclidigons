@@ -139,6 +139,9 @@ function delete_shape()
 end
 
 function insert_shape()
+	if #shapes >= 9 then
+		return
+	end
 	local note = 1
 	if edit_shape then
 		note = edit_shape.note - 4
