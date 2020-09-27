@@ -52,7 +52,7 @@ y_center = 32.5
 edit_shape = nil
 shapes = {}
 
-rate = 1 / 32
+rate = 1 / 48
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
@@ -314,7 +314,7 @@ function init()
 
 	clock.run(function()
 		while true do
-			clock.sync(rate)
+			clock.sync(rate / clock.get_beat_sec())
 			for s = 1, #shapes do
 				local shape = shapes[s]
 				for v = 1, shape.n do
