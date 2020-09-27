@@ -1,8 +1,8 @@
 local midi_out = {}
 
 midi_out.devices = {}
-midi_out.device = nil
-midi_out.channel = nil
+midi_out.device = 1
+midi_out.channel = 1
 
 midi_out.active_notes = {}
 for d = 1, 4 do

@@ -72,7 +72,7 @@ mute_style = m_BOTH
 o_ENGINE = 1
 o_MIDI = 2
 o_BOTH = 3
-output_mode = o_BOTH
+output_mode = o_ENGINE
 
 --- sorting callback for Shapes
 -- @param a shape A
@@ -238,7 +238,7 @@ function init()
 		name = 'output',
 		type = 'option',
 		options = { 'internal', 'midi', 'both', 'multi (per shape)' },
-		default = 4,
+		default = output_mode,
 		action = function(value)
 			if value == 4 then
 				output_mode = nil
@@ -362,7 +362,7 @@ function init()
 		name = 'midi device',
 		min = 1,
 		max = 5,
-		default = 5,
+		default = midi_out.device,
 		formatter = function(param)
 			local value = param:get()
 			if value == 5 then
@@ -386,7 +386,7 @@ function init()
 		name = 'midi channel',
 		min = 1,
 		max = 17,
-		default = 17,
+		default = midi_out.channel,
 		formatter = function(param)
 			local value = param:get()
 			if value == 17 then
@@ -408,7 +408,7 @@ function init()
 		type = 'control',
 		id = 'midi_trigger_length',
 		name = 'note length',
-		controlspec = controlspec.new(0.01, 3, 'exp', 0, 0.1, 's'),
+		controlspec = controlspec.new(0.01, 3, 'exp', 0, 0.05, 's'),
 		action = function(value)
 			midi_out.trigger_length = value
 		end
