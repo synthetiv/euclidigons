@@ -169,6 +169,9 @@ function handle_strike(shape, side, pos, vel, x, y, other, vertex)
 end
 
 function init()
+	
+	k1_hold_time_default = metro[31].time
+	metro[31].time = 0.1
 
 	norns.enc.sens(1, 4) -- shape selection
 	norns.enc.accel(1, false)
@@ -451,4 +454,8 @@ function enc(n, d)
 			end
 		end
 	end
+end
+
+function cleanup()
+	metro[31].time = k1_hold_time_default
 end
