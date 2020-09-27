@@ -176,13 +176,13 @@ function init()
 	end
 
 	local scale_names = {}
-  for i = 1, #musicutil.SCALES do
-    table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
-  end
+	for i = 1, #musicutil.SCALES do
+		table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
+	end
 
-  params:add_separator('behavior')
+	params:add_separator('behavior')
 
-  params:add{
+	params:add{
 		id = 'trigger_style',
 		name = 'trigger style',
 		type = 'option',
@@ -193,7 +193,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		id = 'mute_style',
 		name = 'mute style',
 		type = 'option',
@@ -204,9 +204,9 @@ function init()
 		end
 	}
 
-  params:add_separator('scale')
+	params:add_separator('scale')
 
-  params:add{
+	params:add{
 		id = 'scale_mode',
 		name = 'scale mode',
 		type = 'option',
@@ -220,7 +220,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		id = 'root_note',
 		name = 'root note',
 		type = 'number',
@@ -238,9 +238,9 @@ function init()
 		end
 	}
 
-  params:add_separator('timbre')
+	params:add_separator('timbre')
 
-  params:add{
+	params:add{
 		id = 'amp',
 		name = 'amp',
 		type = 'control',
@@ -250,7 +250,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		id = 'wave',
 		name = 'wave (pulse/saw)',
 		type = 'control',
@@ -260,7 +260,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		id = 'noise',
 		name = 'pulse noise',
 		type = 'control',
@@ -270,7 +270,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		id = 'comb',
 		name = 'saw comb',
 		type = 'control',
@@ -280,7 +280,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		id = 'brightness',
 		name = 'brightness',
 		type = 'control',
@@ -290,7 +290,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		type = 'control',
 		id = 'attack',
 		name = 'attack',
@@ -300,7 +300,7 @@ function init()
 		end
 	}
 
-  params:add{
+	params:add{
 		type = 'control',
 		id = 'release',
 		name = 'release',
