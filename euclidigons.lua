@@ -504,14 +504,14 @@ function redraw()
 					draw_setting(y, label, midi_out.devices[midi_out.device or edit_shape.midi_device].name)
 				end
 				y = y + 10
-				if midi_out.channel == nil then
-					if edit_shape.output_mode == o_ENGINE then
-						draw_setting(y, 'channel:', '-')
-					else
-						draw_setting(y, 'channel:', edit_shape.midi_channel)
-					end
-					y = y + 10
+			end
+			if midi_out.channel == nil then
+				if output_mode == nil and edit_shape.output_mode == o_ENGINE then
+					draw_setting(y, 'channel:', '-')
+				else
+					draw_setting(y, 'channel:', edit_shape.midi_channel)
 				end
+				y = y + 10
 			end
 			-- font 2 doesn't have a real 'sharp' character
 			draw_setting(y, 'note:', string.format('%s (%s)', edit_shape.midi_note, string.gsub(edit_shape.note_name, '♯', '#')))
