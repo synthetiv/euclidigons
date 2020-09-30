@@ -3,21 +3,27 @@
 -- spinning shapes. where they
 -- collide, notes are produced.
 --
--- E1 = select polygon
--- E2 = move selected polygon
--- E3 = resize selected polygon
--- tap K3 = mute/unmute
---           selected polygon
+-- E1: select polygon
+-- E2: move selected polygon
+-- E3: resize selected polygon
+-- tap K3: mute/unmute
+--          selected polygon
 --
--- K2 + E2 = set rotation speed
--- K2 + E3 = set # of sides
--- K2 + K3 = add new polygon
+-- K2 + E2: set rotation speed
+-- K2 + E3: set # of sides
+-- K2 + tap K3: add new polygon
 --
--- K3 + E2 = set note
--- K3 + E3 = set octave OR midi
---            device/channel
--- K3 + K2 = delete selected
---            polygon
+-- K3 + E2: choose new note
+-- K3 + E3: choose new octave
+--           OR in midi mode,
+--           choose device/ch.
+-- (changes to note/oct/dev/ch.
+-- apply when K3 is released)
+-- K3 + hold K1: undo change
+--                to note/oct/
+--                device/channel
+-- K3 + tap K2: delete selected
+--               polygon
 
 engine.name = 'PrimitiveString'
 num_voices = 19
@@ -455,6 +461,21 @@ function init()
 	end)
 end
 
+function draw_undo()
+	if edit_shape.edits.dirty then
+		screen.font_face(2)
+		screen.level(5)
+		screen.move(0, 10)
+		if edit_shape.edits.compare then
+			screen.text('hold: redo')
+		else
+			screen.text('hold: undo')
+			screen.move(128, 64)
+			screen.text_right('release: save')
+		end
+	end
+end
+
 function redraw()
 	screen.clear()
 	screen.aa(1)
@@ -476,58 +497,61 @@ function redraw()
 	if edit_shape ~= nil then
 		edit_shape:draw_points(true, dim)
 		if held_keys[2] or (held_keys[3] and output_mode == o_ENGINE) then
-			local label = ''
 			if held_keys[2] then
-				label = edit_shape.n
+				draw_setting_centered(edit_shape.x, edit_shape.n)
 			elseif held_keys[3] then
-				label = edit_shape.note_name
+				draw_setting_centered(edit_shape.x, edit_shape.edits.note_name)
+				draw_undo()
 			end
-			local label_w, label_h = screen.text_extents(label)
-			local label_x = util.clamp(edit_shape.x - label_w / 2, 0, 128 - label_w)
-			screen.rect(label_x - 1, y_center - 1 - label_h / 2, label_w + 2, label_h + 2)
-			screen.level(0)
-			screen.fill()
-			screen.move(label_x, y_center + label_h / 2)
-			screen.level(15)
-			screen.text(label)
 		elseif held_keys[3] then
-			local y = 10
+			draw_undo()
 			screen.font_face(2)
+			local mode = (output_mode or edit_shape.edits.output_mode)
+			local device = (midi_out.device or edit_shape.edits.midi_device)
+			local y = 10
 			if output_mode == nil or midi_out.device == nil then
-				if output_mode == nil and edit_shape.output_mode == o_ENGINE then
-					draw_setting(y, 'out:', 'internal')
+				if mode == o_ENGINE then
+					device = 'internal'
+				elseif mode == o_BOTH then
+					device = 'int + ' .. midi_out.devices[device].name
 				else
-					local label = 'out:'
-					if (output_mode or edit_shape.output_mode) == o_BOTH then
-						label = 'out:  int +'
-					end
-					draw_setting(y, label, midi_out.devices[midi_out.device or edit_shape.midi_device].name)
+					device = midi_out.devices[device].name
 				end
+				draw_setting(y, 'out:', device)
 				y = y + 10
 			end
 			if midi_out.channel == nil then
-				if output_mode == nil and edit_shape.output_mode == o_ENGINE then
-					draw_setting(y, 'channel:', '-')
-				else
-					draw_setting(y, 'channel:', edit_shape.midi_channel)
+				local channel = (midi_out.channel or edit_shape.edits.midi_channel)
+				if mode == o_ENGINE then
+					channel = '-'
 				end
+				draw_setting(y, 'channel:', channel)
 				y = y + 10
 			end
-			-- font 2 doesn't have a real 'sharp' character
-			draw_setting(y, 'note:', string.format('%s (%s)', edit_shape.midi_note, string.gsub(edit_shape.note_name, '♯', '#')))
+			draw_setting(y, 'note:', string.format('%s (%s)', edit_shape.edits.midi_note, edit_shape.edits.note_name))
 		end
 	end
 	screen.update()
 end
 
 function draw_setting(y, label, value)
-	local label_width = screen.text_extents(label)
-	local value_width = screen.text_extents(value)
-	screen.move(128 - label_width - value_width - 3, y)
+	local width = screen.text_extents(label .. value) + 3
+	screen.move(128 - width, y)
 	screen.level(3)
 	screen.text(label)
-	screen.move(128 - value_width, y)
+	screen.move_rel(3, 0)
 	screen.level(10)
+	screen.text(value)
+end
+
+function draw_setting_centered(x, value)
+	local w, h = screen.text_extents(value)
+	local x = util.clamp(x - w / 2, 0, 128 - w)
+	screen.rect(x - 1, y_center - 1 - h / 2, w + 2, h + 2)
+	screen.level(0)
+	screen.fill()
+	screen.move(x, y_center + h / 2)
+	screen.level(15)
 	screen.text(value)
 end
 
@@ -535,7 +559,15 @@ function key(n, z)
 	
 	local now = util.time()
 
-	if n == 2 then
+	if n == 1 then
+		if z == 1 then
+			if held_keys[3] then
+				if edit_shape ~= nil and edit_shape.edits.dirty then
+					edit_shape.edits:undo()
+				end
+			end
+		end
+	elseif n == 2 then
 		if z == 1 then
 			if held_keys[3] then
 				delete_shape()
@@ -547,8 +579,12 @@ function key(n, z)
 				insert_shape()
 			end
 		else
-			if key_times[n] > now - 0.25 and edit_shape ~= nil then
-				edit_shape.mute = not edit_shape.mute
+			if edit_shape ~= nil then
+				if edit_shape.edits.dirty then
+					edit_shape.edits:apply()
+				elseif key_times[n] > now - 0.25 then
+					edit_shape.mute = not edit_shape.mute
+				end
 			end
 		end
 	end
@@ -587,7 +623,7 @@ function enc(n, d)
 				edit_shape.rate = edit_shape.rate + d * 0.0015
 			elseif held_keys[3] then
 				-- set note
-				edit_shape.note = edit_shape.note + d
+				edit_shape.edits.note = edit_shape.edits.note + d
 			else
 				-- set position
 				edit_shape.delta_x = edit_shape.delta_x + d * 0.5
@@ -601,23 +637,24 @@ function enc(n, d)
 			elseif held_keys[3] then
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
 					-- device and channel are either fixed or irrelevant; set octave
-					edit_shape.note = edit_shape.note + d * #scale
+					edit_shape.edits.note = edit_shape.edits.note + d * #scale
 				else
-					local next_mode = edit_shape.output_mode + d
+					local edits = edit_shape.edits
+					local next_mode = edits.output_mode + d
 					local can_change_mode = output_mode == nil and (next_mode >= 1 and next_mode <= 2)
-					local next_device = edit_shape.midi_device + d
-					local can_change_device = midi_out.device == nil and (output_mode ~= nil or edit_shape.output_mode ~= o_ENGINE) and (next_device >= 1 and next_device <= 4)
-					local next_channel = edit_shape.midi_channel + d
-					local can_change_channel = midi_out.channel == nil and (output_mode ~= nil or edit_shape.output_mode ~= o_ENGINE) and (next_channel >= 1 and next_channel <= 16)
+					local next_device = edits.midi_device + d
+					local can_change_device = midi_out.device == nil and (output_mode ~= nil or edits.output_mode ~= o_ENGINE) and (next_device >= 1 and next_device <= 4)
+					local next_channel = edits.midi_channel + d
+					local can_change_channel = midi_out.channel == nil and (output_mode ~= nil or edits.output_mode ~= o_ENGINE) and (next_channel >= 1 and next_channel <= 16)
 					if can_change_channel then
-						edit_shape.midi_channel = (next_channel - 1) % 16 + 1
+						edits.midi_channel = (next_channel - 1) % 16 + 1
 					elseif can_change_device then
-						edit_shape.midi_device = (next_device - 1) % 4 + 1
-						edit_shape.midi_channel = d > 0 and 1 or 16
+						edits.midi_device = (next_device - 1) % 4 + 1
+						edits.midi_channel = d > 0 and 1 or 16
 					elseif can_change_mode then
-						edit_shape.output_mode = next_mode
-						edit_shape.midi_channel = d > 0 and 1 or 16
-						edit_shape.midi_device = d > 0 and 1 or 4
+						edits.output_mode = next_mode
+						edits.midi_channel = d > 0 and 1 or 16
+						edits.midi_device = d > 0 and 1 or 4
 					end
 				end
 			else
