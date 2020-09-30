@@ -1,20 +1,23 @@
 -- euclidigons
 --
--- spinning shapes. where they collide, notes are produced.
+-- spinning shapes. where they
+-- collide, notes are produced.
 --
 -- E1 = select polygon
 -- E2 = move selected polygon
 -- E3 = resize selected polygon
--- K3 = mute/unmute selected polygon
+-- tap K3 = mute/unmute
+--           selected polygon
 --
 -- K2 + E2 = set rotation speed
--- K2 + E3 = set number of sides
+-- K2 + E3 = set # of sides
+-- K2 + K3 = add new polygon
 --
--- K1 + E2 = set note
--- K1 + E3 = set octave OR midi device/channel
---
--- K1 + K2 = delete selected polygon
--- K1 + K3 = add new polygon
+-- K3 + E2 = set note
+-- K3 + E3 = set octave OR midi
+--            device/channel
+-- K3 + K2 = delete selected
+--            polygon
 
 engine.name = 'PrimitiveString'
 num_voices = 19
@@ -57,8 +60,8 @@ rate = 1 / 48
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
-alt = false
-shift = false
+held_keys = { false, false, false }
+key_times = { 0, 0, 0 }
 
 s_IN = 1
 s_OUT = 2
@@ -194,9 +197,6 @@ end
 
 function init()
 	
-	k1_hold_time_default = metro[31].time
-	metro[31].time = 0.1
-
 	norns.enc.sens(1, 4) -- shape selection
 	norns.enc.accel(1, false)
 
@@ -459,7 +459,7 @@ function redraw()
 	screen.clear()
 	screen.aa(1)
 	screen.font_face(1)
-	local dim = alt and output_mode ~= o_ENGINE
+	local dim = held_keys[3] and output_mode ~= o_ENGINE
 	for s = 1, #shapes do
 		if shapes[s] ~= edit_shape then
 			shapes[s]:draw_lines(false, dim)
@@ -475,11 +475,11 @@ function redraw()
 	end
 	if edit_shape ~= nil then
 		edit_shape:draw_points(true, dim)
-		if shift or (alt and output_mode == o_ENGINE) then
+		if held_keys[2] or (held_keys[3] and output_mode == o_ENGINE) then
 			local label = ''
-			if shift then
+			if held_keys[2] then
 				label = edit_shape.n
-			elseif alt then
+			elseif held_keys[3] then
 				label = edit_shape.note_name
 			end
 			local label_w, label_h = screen.text_extents(label)
@@ -490,7 +490,7 @@ function redraw()
 			screen.move(label_x, y_center + label_h / 2)
 			screen.level(15)
 			screen.text(label)
-		elseif alt then
+		elseif held_keys[3] then
 			local y = 10
 			screen.font_face(2)
 			if output_mode == nil or midi_out.device == nil then
@@ -532,33 +532,38 @@ function draw_setting(y, label, value)
 end
 
 function key(n, z)
-	if n == 1 then
-		alt = z == 1
-	elseif n == 2 then
-		if alt then
-			if z == 1 then
+	
+	local now = util.time()
+
+	if n == 2 then
+		if z == 1 then
+			if held_keys[3] then
 				delete_shape()
-			else
-				shift = false
 			end
-		else
-			shift = z == 1
 		end
 	elseif n == 3 then
 		if z == 1 then
-			if alt then
+			if held_keys[2] then
 				insert_shape()
-			elseif edit_shape ~= nil then
+			end
+		else
+			if key_times[n] > now - 0.25 and edit_shape ~= nil then
 				edit_shape.mute = not edit_shape.mute
 			end
 		end
 	end
-	if alt then
+
+	held_keys[n] = z == 1
+	if z == 1 then
+		key_times[n] = now
+	end
+
+	if held_keys[3] then
 		norns.enc.sens(2, 4) -- note
 		norns.enc.accel(2, false)
 		norns.enc.sens(3, 4) -- octave
 		norns.enc.accel(3, false)
-	elseif shift then
+	elseif held_keys[2] then
 		norns.enc.sens(2, 1) -- speed
 		norns.enc.accel(2, true)
 		norns.enc.sens(3, 4) -- # of sides
@@ -577,10 +582,10 @@ function enc(n, d)
 		edit_shape = get_next_shape(d) or edit_shape
 	elseif n == 2 then
 		if edit_shape ~= nil then
-			if shift then
+			if held_keys[2] then
 				-- set rotation rate
 				edit_shape.rate = edit_shape.rate + d * 0.0015
-			elseif alt then
+			elseif held_keys[3] then
 				-- set note
 				edit_shape.note = edit_shape.note + d
 			else
@@ -590,10 +595,10 @@ function enc(n, d)
 		end
 	elseif n == 3 then
 		if edit_shape ~= nil then
-			if shift then
+			if held_keys[2] then
 				-- set number of sides
 				edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
-			elseif alt then
+			elseif held_keys[3] then
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
 					-- device and channel are either fixed or irrelevant; set octave
 					edit_shape.note = edit_shape.note + d * #scale
@@ -624,6 +629,5 @@ function enc(n, d)
 end
 
 function cleanup()
-	metro[31].time = k1_hold_time_default
 	midi_out:clear_sync()
 end
