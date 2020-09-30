@@ -67,7 +67,7 @@ rate = 1 / 48
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
 held_keys = { false, false, false }
-key_times = { 0, 0, 0 }
+k3_time = 0
 
 s_IN = 1
 s_OUT = 2
@@ -467,11 +467,11 @@ function draw_undo()
 		screen.level(5)
 		screen.move(0, 10)
 		if edit_shape.edits.compare then
-			screen.text('hold: redo')
+			screen.text('hold K1: redo')
 		else
-			screen.text('hold: undo')
+			screen.text('hold K1: undo')
 			screen.move(128, 64)
-			screen.text_right('release: save')
+			screen.text_right('release K3: OK')
 		end
 	end
 end
@@ -556,8 +556,8 @@ function draw_setting_centered(x, value)
 end
 
 function key(n, z)
-	
-	local now = util.time()
+
+	held_keys[n] = z == 1
 
 	if n == 1 then
 		if z == 1 then
@@ -574,24 +574,22 @@ function key(n, z)
 			end
 		end
 	elseif n == 3 then
+		local now = util.time()
 		if z == 1 then
 			if held_keys[2] then
 				insert_shape()
+			else
+				k3_time = now
 			end
 		else
 			if edit_shape ~= nil then
 				if edit_shape.edits.dirty then
 					edit_shape.edits:apply()
-				elseif key_times[n] > now - 0.25 then
+				elseif k3_time > now - 0.25 then
 					edit_shape.mute = not edit_shape.mute
 				end
 			end
 		end
-	end
-
-	held_keys[n] = z == 1
-	if z == 1 then
-		key_times[n] = now
 	end
 
 	if held_keys[3] then
