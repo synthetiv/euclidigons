@@ -11,7 +11,7 @@
 -- K2 + E3 = set number of sides
 --
 -- K1 + E2 = set note
--- K1 + E3 = set octave
+-- K1 + E3 = set octave OR midi device/channel
 --
 -- K1 + K2 = delete selected polygon
 -- K1 + K3 = add new polygon
@@ -45,6 +45,7 @@ for v = 1, num_voices do
 end
 
 Shape = include 'lib/shape'
+midi_out = include 'lib/midi'
 
 tau = math.pi * 2
 y_center = 32.5
@@ -67,6 +68,11 @@ trigger_style = s_IN
 m_BOTH = 1
 m_NOTE = 2
 mute_style = m_BOTH
+
+o_ENGINE = 1
+o_MIDI = 2
+o_BOTH = 3
+output_mode = o_ENGINE
 
 --- sorting callback for Shapes
 -- @param a shape A
@@ -143,29 +149,47 @@ function insert_shape()
 		return
 	end
 	local note = 1
+	local output_mode = o_ENGINE
+	local midi_device = 1
+	local midi_channel = 1
 	if edit_shape then
 		note = edit_shape.note - 4
+		output_mode = edit_shape.output_mode
+		midi_device = edit_shape.midi_device
+		midi_channel = edit_shape.midi_channel
 	end
 	local radius = math.random(13, 30)
 	local rate = math.random() * 15 + 10
 	rate = tau / (rate * rate)
 	rate = rate * (math.random(2) - 1.5) * 2 -- randomize sign
 	edit_shape = Shape.new(note, math.random(3, 9), radius, math.random(radius, 128 - radius) + 0.5, rate)
+	edit_shape.output_mode = output_mode
+	edit_shape.midi_device = midi_device
+	edit_shape.midi_channel = midi_channel
 	table.insert(shapes, edit_shape)
 end
 
 function handle_strike(shape, side, pos, vel, x, y, other, vertex)
-	local voice = voice_manager:get()
-	voice.shape = shape
-	voice.side = side
-	voice.other = other
-	voice.vertex = vertex
-	engine.hz(voice.id, shape.note_freq)
-	engine.pos(voice.id, pos)
-	engine.pan(voice.id, (x / 64) - 1)
-	engine.vel(voice.id, vel / 16)
-	engine.trig(voice.id)
-	table.insert(shape.voices, voice)
+	-- scale/curve velocity to [0, 1]
+	local vel_scaled = math.pow(math.abs(vel / 16), 1.5)
+	vel_scaled = vel_scaled / (1 + vel_scaled)
+	local output_mode = output_mode or shape.output_mode
+	if output_mode == o_ENGINE or output_mode == o_BOTH then
+		local voice = voice_manager:get()
+		voice.shape = shape
+		voice.side = side
+		voice.other = other
+		voice.vertex = vertex
+		engine.hz(voice.id, shape.note_freq)
+		engine.pos(voice.id, pos)
+		engine.pan(voice.id, (x / 64) - 1)
+		engine.vel(voice.id, vel_scaled)
+		engine.trig(voice.id)
+		table.insert(shape.voices, voice)
+	end
+	if output_mode == o_MIDI or output_mode == o_BOTH then
+		midi_out:trigger(shape, math.floor(vel_scaled * 127 + 0.5))
+	end
 end
 
 function init()
@@ -185,6 +209,8 @@ function init()
 	for i = 1, #musicutil.SCALES do
 		table.insert(scale_names, string.lower(musicutil.SCALES[i].name))
 	end
+	
+	midi_out:connect()
 
 	params:add_separator('behavior')
 
@@ -207,6 +233,21 @@ function init()
 		default = mute_style,
 		action = function(value)
 			mute_style = value
+		end
+	}
+	
+	params:add{
+		id = 'output',
+		name = 'output',
+		type = 'option',
+		options = { 'internal', 'midi', 'both', 'multi (per shape)' },
+		default = output_mode,
+		action = function(value)
+			if value == 4 then
+				output_mode = nil
+			else
+				output_mode = value
+			end
 		end
 	}
 
@@ -245,7 +286,7 @@ function init()
 	}
 
 	params:add_separator('timbre')
-
+	
 	params:add{
 		id = 'amp',
 		name = 'amp',
@@ -316,6 +357,75 @@ function init()
 		end
 	}
 
+	params:add_separator('midi')
+	
+	params:add{
+		type = 'number',
+		id = 'midi_device',
+		name = 'midi device',
+		min = 1,
+		max = 5,
+		default = midi_out.device,
+		formatter = function(param)
+			local value = param:get()
+			if value == 5 then
+				return 'multi (per shape)'
+			else
+				return midi_out.devices[value].name
+			end
+		end,
+		action = function(value)
+			if value == 5 then
+				midi_out.device = nil
+			else
+				midi_out.device = value
+			end
+		end
+	}
+
+	params:add{
+		type = 'number',
+		id = 'midi_channel',
+		name = 'midi channel',
+		min = 1,
+		max = 17,
+		default = midi_out.channel,
+		formatter = function(param)
+			local value = param:get()
+			if value == 17 then
+				return 'multi (per shape)'
+			else
+				return value
+			end
+		end,
+		action = function(value)
+			if value == 17 then
+				midi_out.channel = nil
+			else
+				midi_out.channel = value
+			end
+		end
+	}
+
+	params:add{
+		type = 'control',
+		id = 'midi_trigger_length',
+		name = 'note length',
+		controlspec = controlspec.new(0.01, 3, 'exp', 0, 0.05, 's'),
+		action = function(value)
+			midi_out.trigger_length = value
+		end
+	}
+	
+	params:add{
+		type = 'trigger',
+		id = 'midi_clear',
+		name = 'clear midi notes',
+		action = function()
+			midi_out:clear_async()
+		end
+	}
+
 	params:bang()
 
 	clock.run(function()
@@ -348,22 +458,24 @@ end
 function redraw()
 	screen.clear()
 	screen.aa(1)
+	screen.font_face(1)
+	local dim = alt and output_mode ~= o_ENGINE
 	for s = 1, #shapes do
 		if shapes[s] ~= edit_shape then
-			shapes[s]:draw_lines()
+			shapes[s]:draw_lines(false, dim)
 		end
 	end
 	if edit_shape ~= nil then
-		edit_shape:draw_lines(true)
+		edit_shape:draw_lines(true, dim)
 	end
 	for s = 1, #shapes do
 		if shapes[s] ~= edit_shape then
-			shapes[s]:draw_points()
+			shapes[s]:draw_points(false, dim)
 		end
 	end
 	if edit_shape ~= nil then
-		edit_shape:draw_points(true)
-		if shift or alt then
+		edit_shape:draw_points(true, dim)
+		if shift or (alt and output_mode == o_ENGINE) then
 			local label = ''
 			if shift then
 				label = edit_shape.n
@@ -378,9 +490,45 @@ function redraw()
 			screen.move(label_x, y_center + label_h / 2)
 			screen.level(15)
 			screen.text(label)
+		elseif alt then
+			local y = 10
+			screen.font_face(2)
+			if output_mode == nil or midi_out.device == nil then
+				if output_mode == nil and edit_shape.output_mode == o_ENGINE then
+					draw_setting(y, 'out:', 'internal')
+				else
+					local label = 'out:'
+					if (output_mode or edit_shape.output_mode) == o_BOTH then
+						label = 'out:  int +'
+					end
+					draw_setting(y, label, midi_out.devices[midi_out.device or edit_shape.midi_device].name)
+				end
+				y = y + 10
+			end
+			if midi_out.channel == nil then
+				if output_mode == nil and edit_shape.output_mode == o_ENGINE then
+					draw_setting(y, 'channel:', '-')
+				else
+					draw_setting(y, 'channel:', edit_shape.midi_channel)
+				end
+				y = y + 10
+			end
+			-- font 2 doesn't have a real 'sharp' character
+			draw_setting(y, 'note:', string.format('%s (%s)', edit_shape.midi_note, string.gsub(edit_shape.note_name, '♯', '#')))
 		end
 	end
 	screen.update()
+end
+
+function draw_setting(y, label, value)
+	local label_width = screen.text_extents(label)
+	local value_width = screen.text_extents(value)
+	screen.move(128 - label_width - value_width - 3, y)
+	screen.level(3)
+	screen.text(label)
+	screen.move(128 - value_width, y)
+	screen.level(10)
+	screen.text(value)
 end
 
 function key(n, z)
@@ -446,8 +594,27 @@ function enc(n, d)
 				-- set number of sides
 				edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
 			elseif alt then
-				-- set octave
-				edit_shape.note = edit_shape.note + d * #scale
+				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
+					-- device and channel are either fixed or irrelevant; set octave
+					edit_shape.note = edit_shape.note + d * #scale
+				else
+					local next_mode = edit_shape.output_mode + d
+					local can_change_mode = output_mode == nil and (next_mode >= 1 and next_mode <= 2)
+					local next_device = edit_shape.midi_device + d
+					local can_change_device = midi_out.device == nil and (output_mode ~= nil or edit_shape.output_mode ~= o_ENGINE) and (next_device >= 1 and next_device <= 4)
+					local next_channel = edit_shape.midi_channel + d
+					local can_change_channel = midi_out.channel == nil and (output_mode ~= nil or edit_shape.output_mode ~= o_ENGINE) and (next_channel >= 1 and next_channel <= 16)
+					if can_change_channel then
+						edit_shape.midi_channel = (next_channel - 1) % 16 + 1
+					elseif can_change_device then
+						edit_shape.midi_device = (next_device - 1) % 4 + 1
+						edit_shape.midi_channel = d > 0 and 1 or 16
+					elseif can_change_mode then
+						edit_shape.output_mode = next_mode
+						edit_shape.midi_channel = d > 0 and 1 or 16
+						edit_shape.midi_device = d > 0 and 1 or 4
+					end
+				end
 			else
 				-- set size
 				edit_shape.r = math.max(edit_shape.r + d * 0.5, 1)
@@ -458,4 +625,5 @@ end
 
 function cleanup()
 	metro[31].time = k1_hold_time_default
+	midi_out:clear_sync()
 end

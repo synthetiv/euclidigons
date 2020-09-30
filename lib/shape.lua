@@ -8,6 +8,10 @@ function Shape.new(note, n, r, x, rate)
 		_note = 1,
 		note_name = 'A3',
 		note_freq = 440,
+		output_mode = o_ENGINE,
+		midi_note = 69,
+		midi_device = 1,
+		midi_channel = 1,
 		mute = true,
 		_n = 0,
 		area = 0,
@@ -39,13 +43,14 @@ function Shape:__newindex(index, value)
 		self._r = value
 		self:calculate_area()
 	elseif index == 'note' then
-		self._note = value
+		self._note = value -- TODO: clamp here instead of below
 		local scale_degrees = #scale
 		local degree = (value - 1) % #scale + 1
 		local octave = math.floor((value - 1) / #scale)
-		local note_num = scale[degree] + octave * 12
+		local note_num = util.clamp(scale[degree] + octave * 12, 0, 127)
 		self.note_name = musicutil.note_num_to_name(note_num, true)
 		self.note_freq = musicutil.note_num_to_freq(note_num)
+		self.midi_note = note_num
 	end
 end
 
@@ -105,7 +110,7 @@ function Shape:tick()
 	self:calculate_points()
 end
 
-function Shape:draw_lines(selected)
+function Shape:draw_lines(selected, dim)
 	if self.mute then
 		return
 	end
@@ -121,25 +126,33 @@ function Shape:draw_lines(selected)
 			level = math.max(self.side_levels[v + 1])
 		end
 		if selected then
-			level = level * 0.7 + 0.3
+			level = 1 - (1 - level) * 0.6
 		end
 		screen.move(vertex1.x, vertex1.y)
 		screen.line(vertex2.x, vertex2.y)
-		screen.level(math.floor(2 + level * 13))
-		screen.line_width(math.floor(1 + level))
+		if dim then
+			screen.level(math.floor(2 + level * 4))
+		else
+			screen.level(math.floor(2 + level * 13))
+		end
+		screen.line_width(math.max(1, level * 2.5))
 		screen.stroke()
 	end
 end
 
-function Shape:draw_points(selected)
+function Shape:draw_points(selected, dim)
 	for v = 1, self.n do
 		local vertex = self.vertices[v]
 		local level = vertex.level
 		if selected then
-			level = level * 0.8 + 0.2
+			level = 1 - (1 - level) * 0.8
 		end
 		screen.circle(vertex.x, vertex.y, 0.5 + level * 3)
-		screen.level(math.floor(6 + level * 9))
+		if dim then
+			screen.level(math.floor(3 + level * 9))
+		else
+			screen.level(math.floor(6 + level * 9))
+		end
 		screen.fill()
 	end
 	if selected then
