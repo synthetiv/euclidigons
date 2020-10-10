@@ -66,6 +66,13 @@ rate = 1 / 48
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
+guide_level = 0
+guide = {
+	intersection = {},
+	edit_other = {},
+	other_edit = {}
+}
+
 held_keys = { false, false, false }
 k3_time = 0
 
@@ -151,6 +158,7 @@ function delete_shape()
 	else
 		edit_shape = nil
 	end
+	show_guides()
 end
 
 function insert_shape()
@@ -176,6 +184,7 @@ function insert_shape()
 	edit_shape.midi_device = midi_device
 	edit_shape.midi_channel = midi_channel
 	table.insert(shapes, edit_shape)
+	show_guides()
 end
 
 function handle_strike(shape, side, pos, vel, x, y, other, vertex)
@@ -457,6 +466,10 @@ function init()
 				end
 			end
 			redraw()
+			-- decay guide level
+			if not held_keys[2] and not held_keys[3] and guide_level > 0 then
+				guide_level = guide_level - 0.125
+			end
 		end
 	end)
 end
@@ -480,6 +493,7 @@ function redraw()
 	screen.clear()
 	screen.aa(1)
 	screen.font_face(1)
+	screen.line_cap('butt')
 	local dim = held_keys[3] and output_mode ~= o_ENGINE
 	for s = 1, #shapes do
 		if shapes[s] ~= edit_shape then
@@ -531,6 +545,39 @@ function redraw()
 			draw_setting(y, 'note:', string.format('%s (%s)', edit_shape.edits.midi_note, edit_shape.edits.note_name))
 		end
 	end
+	if guide_level > 0 then
+		screen.rect(0, 62, 128, 2)
+		screen.level(0)
+		screen.fill()
+		local guide_level = math.min(1, guide_level)
+		-- clear guide pixels
+		for x = 1, 128 do
+			guide.intersection[x] = 0
+			guide.edit_other[x] = 0
+			guide.other_edit[x] = 0
+		end
+		for s = 1, #shapes do
+			if shapes[s] ~= edit_shape then
+				shapes[s]:update_guide_for_intersection(edit_shape)
+			end
+		end
+		for x = 1, 128 do
+			-- screen.pixel(x - 1, 62)
+			-- screen.level(util.clamp(math.ceil(guide.intersection[x] * 4), 0, 15))
+			-- screen.fill()
+			--[[
+			screen.pixel(x - 1, 62)
+			screen.level(util.clamp(math.floor(guide.other_edit[x] * 3 + 0.5), 0, 15))
+			screen.fill()
+			screen.pixel(x - 1, 63)
+			screen.level(util.clamp(math.floor(guide.edit_other[x] + 0.5), 0, 15))
+			screen.fill()
+			--]]
+			screen.pixel(x - 1, 63)
+			screen.level(util.clamp(math.floor(math.min(1, guide_level) * (guide.other_edit[x] * 4 + guide.edit_other[x]) + 0.5), 0, 15))
+			screen.fill()
+		end
+	end
 	screen.update()
 end
 
@@ -555,6 +602,10 @@ function draw_setting_centered(x, value)
 	screen.text(value)
 end
 
+function show_guides()
+	guide_level = 5
+end
+
 function key(n, z)
 
 	held_keys[n] = z == 1
@@ -572,6 +623,7 @@ function key(n, z)
 			if held_keys[3] then
 				delete_shape()
 			end
+			show_guides()
 		end
 	elseif n == 3 then
 		local now = util.time()
@@ -581,6 +633,7 @@ function key(n, z)
 			else
 				k3_time = now
 			end
+			show_guides()
 		else
 			if edit_shape ~= nil then
 				if edit_shape.edits.dirty then
@@ -661,6 +714,7 @@ function enc(n, d)
 			end
 		end
 	end
+	show_guides()
 end
 
 function cleanup()

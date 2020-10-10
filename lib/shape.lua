@@ -70,8 +70,8 @@ function Shape.new(note, n, r, x, rate)
 		midi_channel = 1,
 		mute = true,
 		_n = 0,
-		area = 0,
 		_r = r,
+		r_strike_min = 0,
 		delta_x = 0,
 		x = x,
 		nx = x,
@@ -106,10 +106,10 @@ function Shape:__newindex(index, value)
 	if index == 'n' then
 		self._n = value
 		self:calculate_points()
-		self:calculate_area()
+		self:calculate_strike_radius()
 	elseif index == 'r' then
 		self._r = value
-		self:calculate_area()
+		self:calculate_strike_radius()
 	elseif index == 'note' then
 		self._note = value -- TODO: clamp here instead of in get_note_values()
 		self.midi_note, self.note_name, self.note_freq = self:get_note_values(value)
@@ -151,14 +151,13 @@ function Shape:calculate_points()
 	end
 end
 
-function Shape:calculate_area()
-	local area = 0
-	for v = 1, self.n do
-		local vertex = self.vertices[v]
-		local vertex2 = self.vertices[v % self.n + 1]
-		area = area + vertex.x * vertex2.y - vertex2.x * vertex.y
+function Shape:calculate_strike_radius()
+	if self.n == 1 then
+		-- special case for point 'polygons', because rounding error (or something) makes the below not return 0
+		self.r_strike_min = self.r
+	else
+		self.r_strike_min = math.cos(math.pi - math.pi * (self.n - 1) / self.n) * self.r
 	end
-	self.area = area
 end
 
 function Shape:tick()
@@ -171,6 +170,95 @@ function Shape:tick()
 	end
 	self:calculate_points()
 end
+
+function Shape:update_guide_for_intersection(other, level)
+	-- TODO:
+	-- 1. find intersection of two outer circles;
+	--    that's the dividing line between 'self strikes other' and 'other strikes self'
+	-- 2. find intersection between self.outer and other.inner;
+	--    from that to the above is the 'self strikes other' zone
+	-- 3. find intersection between self.inner and other.outer;
+	--    from that to #1 is the 'other strikes self' zone
+	-- yso = math.sqrt((x - self.x)^2 + self.r^2)
+	-- yoo = math.sqrt((x - other.x)^2 + other.r^2)
+	-- since both shapes are on the x axis, you can ignore the ambiguous sign that would come from squaring both sides
+	-- self.r^2 - (x - self.x)^2 = other.r^2 - (x - other.x)^2 + other.r^2
+	-- self.r^2 - x^2 + (2 * x * self.x) - self.x^2 = other.r^2 - x^2 + (2 * x * other.x) - other.x^2
+	-- cancel the -x^2's
+	-- self.r^2 + (2 * x * self.x) - self.x^2 = other.r^2 + (2 * x * other.x) - other.x^2
+	-- self.r^2 - self.x^2 - other.r^2 + other.x^2 = 2 * x * (other.x - self.x)
+	-- (self.r^2 - self.x^2 - other.r^2 + other.x^2) / (2 * (other.x - self.x)) = x
+	local diff = self.x^2 - other.x^2
+	local div = 2 * (other.x - self.x)
+	local outer = (self.r^2 - other.r^2 - diff) / div -- intersection between outer bounds
+	local self_other = (self.r^2	- other.r_strike_min^2 - diff) / div -- own outer with other inner
+	local other_self = (self.r_strike_min^2	- other.r^2 - diff) / div -- own inner with other outer
+	local self_left = self_other < other_self
+	local left = math.max(1, math.min(self_other, other_self), self.x - self.r, other.x - other.r)
+	local right = math.min(128, math.max(self_other, other_self), self.x + self.r, other.x + other.r)
+	if left <= right then
+		if left <= outer and outer <= right then
+			-- for x = math.max(1, math.floor(outer)), math.max(128, math.ceil(outer)) do
+				-- guide.intersection[x] = guide.intersection[x] + util.clamp(1 - math.abs(x - outer), 0, 1)
+			-- end
+			for x = math.floor(left), math.min(128, math.floor(outer + 0.5)) do
+				if self_left then
+					-- guide.other_edit[x] = guide.other_edit[x] + util.clamp(x - left, 0, 1)
+					guide.other_edit[x] = math.max(guide.other_edit[x], util.clamp(x - left, 0, 1))
+				else
+					-- guide.edit_other[x] = guide.edit_other[x] + util.clamp(x - left, 0, 1)
+					guide.edit_other[x] = math.max(guide.edit_other[x], util.clamp(x - left, 0, 1))
+				end
+			end
+			for x = math.max(1, math.floor(outer + 0.5)), math.ceil(right) do
+				if self_left then
+					-- guide.edit_other[x] = guide.edit_other[x] + util.clamp(right - x, 0, 1)
+					guide.edit_other[x] = math.max(guide.edit_other[x], util.clamp(right - x, 0, 1))
+				else
+					-- guide.other_edit[x] = guide.other_edit[x] + util.clamp(right - x, 0, 1)
+					guide.other_edit[x] = math.max(guide.other_edit[x], util.clamp(right - x, 0, 1))
+				end
+			end
+		else
+			for x = math.floor(left), math.ceil(right) do
+				if (self_left and outer <= left) or (not self_left and outer >= right) then
+					-- guide.edit_other[x] = guide.edit_other[x] + util.clamp(math.min(x - left, right - x), 0, 1)
+					guide.edit_other[x] = math.max(guide.edit_other[x], util.clamp(math.min(x - left, right - x), 0, 1))
+				else
+					-- guide.other_edit[x] = guide.other_edit[x] + util.clamp(math.min(x - left, right - x), 0, 1)
+					guide.other_edit[x] = math.max(guide.other_edit[x], util.clamp(math.min(x - left, right - x), 0, 1))
+				end
+			end
+		end
+	end
+end
+
+--[[
+function Shape:draw_strike_zone(selected, level)
+	if self.n == 1 then
+		screen.circle(self.x, y_center, self.r)
+		screen.line_width(1)
+		screen.level(math.floor((selected and 4 or 2) * level + 0.5))
+		screen.stroke()
+		return
+	end
+	if not self.mute then
+		local r = (self.r + self.r_strike_min) / 2
+		-- screen.close() -- TODO
+		screen.circle(self.x, y_center, r)
+		screen.line_width(math.max(1, self.r - self.r_strike_min))
+		screen.level(math.floor(((selected and not self.mute) and 4 or 2) * level + 0.5))
+		screen.stroke()
+	else
+		screen.level(math.floor((selected and 6 or 2) * level + 0.5))
+		screen.line_width(1)
+		screen.circle(self.x, y_center, self.r)
+		screen.stroke()
+		screen.circle(self.x, y_center, self.r_strike_min)
+		screen.stroke()
+	end
+end
+--]]
 
 function Shape:draw_lines(selected, dim)
 	if self.mute then
