@@ -562,19 +562,8 @@ function redraw()
 			end
 		end
 		for x = 1, 128 do
-			-- screen.pixel(x - 1, 62)
-			-- screen.level(util.clamp(math.ceil(guide.intersection[x] * 4), 0, 15))
-			-- screen.fill()
-			--[[
-			screen.pixel(x - 1, 62)
-			screen.level(util.clamp(math.floor(guide.other_edit[x] * 3 + 0.5), 0, 15))
-			screen.fill()
 			screen.pixel(x - 1, 63)
-			screen.level(util.clamp(math.floor(guide.edit_other[x] + 0.5), 0, 15))
-			screen.fill()
-			--]]
-			screen.pixel(x - 1, 63)
-			screen.level(util.clamp(math.floor(math.min(1, guide_level) * (util.clamp(guide.other_edit[x], 0, 1) * 4 + util.clamp(guide.edit_other[x], 0, 1)) + 0.5), 0, 15))
+			screen.level(util.clamp(math.floor(math.min(1, guide_level) * math.max(util.clamp(guide.other_edit[x], 0, 1) * 5 + util.clamp(guide.edit_other[x], 0, 1)) + 0.5), 0, 15))
 			screen.fill()
 		end
 	end
