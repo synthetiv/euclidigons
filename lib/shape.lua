@@ -230,8 +230,8 @@ function Shape:draw_lines(selected, dim)
 		local vertex1 = self.vertices[v]
 		local vertex2 = self.vertices[v % self.n + 1]
 		local level = self.side_levels[v]
-		if n == 2 then
-			level = math.max(self.side_levels[v + 1])
+		if self.n == 2 then
+			level = math.max(level, self.side_levels[v + 1])
 		end
 		if selected then
 			level = 1 - (1 - level) * 0.6
