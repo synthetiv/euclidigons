@@ -574,7 +574,7 @@ function redraw()
 			screen.fill()
 			--]]
 			screen.pixel(x - 1, 63)
-			screen.level(util.clamp(math.floor(math.min(1, guide_level) * (guide.other_edit[x] * 4 + guide.edit_other[x]) + 0.5), 0, 15))
+			screen.level(util.clamp(math.floor(math.min(1, guide_level) * (util.clamp(guide.other_edit[x], 0, 1) * 4 + util.clamp(guide.edit_other[x], 0, 1)) + 0.5), 0, 15))
 			screen.fill()
 		end
 	end
@@ -603,7 +603,7 @@ function draw_setting_centered(x, value)
 end
 
 function show_guides()
-	guide_level = 5
+	guide_level = 7
 end
 
 function key(n, z)

@@ -172,64 +172,22 @@ function Shape:tick()
 end
 
 function Shape:update_guide_for_intersection(other, level)
-	-- TODO:
-	-- 1. find intersection of two outer circles;
-	--    that's the dividing line between 'self strikes other' and 'other strikes self'
-	-- 2. find intersection between self.outer and other.inner;
-	--    from that to the above is the 'self strikes other' zone
-	-- 3. find intersection between self.inner and other.outer;
-	--    from that to #1 is the 'other strikes self' zone
-	-- yso = math.sqrt((x - self.x)^2 + self.r^2)
-	-- yoo = math.sqrt((x - other.x)^2 + other.r^2)
-	-- since both shapes are on the x axis, you can ignore the ambiguous sign that would come from squaring both sides
-	-- self.r^2 - (x - self.x)^2 = other.r^2 - (x - other.x)^2 + other.r^2
-	-- self.r^2 - x^2 + (2 * x * self.x) - self.x^2 = other.r^2 - x^2 + (2 * x * other.x) - other.x^2
-	-- cancel the -x^2's
-	-- self.r^2 + (2 * x * self.x) - self.x^2 = other.r^2 + (2 * x * other.x) - other.x^2
-	-- self.r^2 - self.x^2 - other.r^2 + other.x^2 = 2 * x * (other.x - self.x)
-	-- (self.r^2 - self.x^2 - other.r^2 + other.x^2) / (2 * (other.x - self.x)) = x
+	-- constants used below
 	local diff = self.x^2 - other.x^2
 	local div = 2 * (other.x - self.x)
-	local outer = (self.r^2 - other.r^2 - diff) / div -- intersection between outer bounds
-	local self_other = (self.r^2	- other.r_strike_min^2 - diff) / div -- own outer with other inner
-	local other_self = (self.r_strike_min^2	- other.r^2 - diff) / div -- own inner with other outer
-	local self_left = self_other < other_self
-	local left = math.max(1, math.min(self_other, other_self), self.x - self.r, other.x - other.r)
-	local right = math.min(128, math.max(self_other, other_self), self.x + self.r, other.x + other.r)
-	if left <= right then
-		if left <= outer and outer <= right then
-			-- for x = math.max(1, math.floor(outer)), math.max(128, math.ceil(outer)) do
-				-- guide.intersection[x] = guide.intersection[x] + util.clamp(1 - math.abs(x - outer), 0, 1)
-			-- end
-			for x = math.floor(left), math.min(128, math.floor(outer + 0.5)) do
-				if self_left then
-					-- guide.other_edit[x] = guide.other_edit[x] + util.clamp(x - left, 0, 1)
-					guide.other_edit[x] = math.max(guide.other_edit[x], util.clamp(x - left, 0, 1))
-				else
-					-- guide.edit_other[x] = guide.edit_other[x] + util.clamp(x - left, 0, 1)
-					guide.edit_other[x] = math.max(guide.edit_other[x], util.clamp(x - left, 0, 1))
-				end
-			end
-			for x = math.max(1, math.floor(outer + 0.5)), math.ceil(right) do
-				if self_left then
-					-- guide.edit_other[x] = guide.edit_other[x] + util.clamp(right - x, 0, 1)
-					guide.edit_other[x] = math.max(guide.edit_other[x], util.clamp(right - x, 0, 1))
-				else
-					-- guide.other_edit[x] = guide.other_edit[x] + util.clamp(right - x, 0, 1)
-					guide.other_edit[x] = math.max(guide.other_edit[x], util.clamp(right - x, 0, 1))
-				end
-			end
-		else
-			for x = math.floor(left), math.ceil(right) do
-				if (self_left and outer <= left) or (not self_left and outer >= right) then
-					-- guide.edit_other[x] = guide.edit_other[x] + util.clamp(math.min(x - left, right - x), 0, 1)
-					guide.edit_other[x] = math.max(guide.edit_other[x], util.clamp(math.min(x - left, right - x), 0, 1))
-				else
-					-- guide.other_edit[x] = guide.other_edit[x] + util.clamp(math.min(x - left, right - x), 0, 1)
-					guide.other_edit[x] = math.max(guide.other_edit[x], util.clamp(math.min(x - left, right - x), 0, 1))
-				end
-			end
-		end
+	-- x coordinate of intersection between the two shapes' outer bounds
+	local outer = (self.r^2 - other.r^2 - diff) / div
+	-- x coordinate of intersection between this shape's outer bound and other shape's inner bound
+	local self_other = (self.r^2	- other.r_strike_min^2 - diff) / div
+	-- x coordinate of intersection between this shape's inner bound and other shape's outer bound
+	local other_self = (self.r_strike_min^2	- other.r^2 - diff) / div
+	local self_other_min = math.max(math.min(outer, self_other), self.x - self.r, other.x - other.r)
+	local self_other_max = math.min(math.max(outer, self_other), self.x + self.r, other.x + other.r)
+	local other_self_min = math.max(math.min(outer, other_self), self.x - self.r, other.x - other.r)
+	local other_self_max = math.min(math.max(outer, other_self), self.x + self.r, other.x + other.r)
+	for x = 1, 128 do
+		guide.other_edit[x] = math.max(guide.other_edit[x], math.min(x - self_other_min, self_other_max - x + 1))
+		guide.edit_other[x] = math.max(guide.edit_other[x], math.min(x - other_self_min, other_self_max - x + 1))
 	end
 end
 
