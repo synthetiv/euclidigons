@@ -62,7 +62,7 @@ y_center = 32.5
 edit_shape = nil
 shapes = {}
 
-rate = 1 / 48
+rate = 1 / 32
 
 scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
 
