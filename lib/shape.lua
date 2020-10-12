@@ -1,3 +1,5 @@
+local arc_zero = math.pi / -2
+
 local ShapeEditBuffer = {}
 
 function ShapeEditBuffer.new(shape)
@@ -75,7 +77,9 @@ function Shape.new(note, n, r, x, rate)
 		delta_x = 0,
 		x = x,
 		nx = x,
-		rate = rate,
+		_rate = 0,
+		nyquist_rate = 0,
+		blur = 0,
 		theta = 0,
 		vertices = {},
 		side_levels = {},
@@ -87,6 +91,7 @@ function Shape.new(note, n, r, x, rate)
 	shape.r = r
 	shape.n = n
 	shape.note = note
+	shape.rate = rate
 	next_id = next_id + 1
 	return shape
 end
@@ -105,6 +110,8 @@ end
 function Shape:__newindex(index, value)
 	if index == 'n' then
 		self._n = value
+		self.nyquist_rate = math.pi / 2 / value
+		self:calculate_blur()
 		self:calculate_points()
 		self:calculate_strike_radius()
 	elseif index == 'r' then
@@ -113,6 +120,9 @@ function Shape:__newindex(index, value)
 	elseif index == 'note' then
 		self._note = value -- TODO: clamp here instead of in get_note_values()
 		self.midi_note, self.note_name, self.note_freq = self:get_note_values(value)
+	elseif index == 'rate' then
+		self._rate = value
+		self:calculate_blur()
 	end
 end
 
@@ -123,8 +133,15 @@ function Shape:__index(index)
 		return self._r
 	elseif index == 'note' then
 		return self._note
+	elseif index == 'rate' then
+		return self._rate
 	end
 	return Shape[index]
+end
+
+function Shape:calculate_blur()
+	local ratio = math.abs(self.rate / self.nyquist_rate)
+	self.blur = util.clamp(ratio - 0.5, 0, 1) ^ 2
 end
 
 function Shape:calculate_points()
@@ -139,13 +156,18 @@ function Shape:calculate_points()
 			self.vertices[v] = vertex
 			self.side_levels[v] = self.side_levels[v] or 0
 		end
-		-- calculate next x and y
-		local nx = self.nx + math.cos(self.theta + v * vertex_angle) * self.r
-		local ny = y_center + math.sin(self.theta + v * vertex_angle) * self.r
+		-- calculate next theta, x, and y
+		local nt = self.theta + v * vertex_angle
+		local nx = self.nx + math.cos(nt) * self.r
+		local ny = y_center + math.sin(nt) * self.r
+		-- save previous theta value, if any
+		vertex.pt = vertex.t or vertex.nt or nt
 		-- apply previous frame's 'next' values, if any
+		vertex.t = vertex.nt or nt
 		vertex.x = vertex.nx or nx
 		vertex.y = vertex.ny or ny
 		-- save next values for next frame
+		vertex.nt = nt
 		vertex.nx = nx
 		vertex.ny = ny
 	end
@@ -191,32 +213,36 @@ function Shape:update_guide_for_intersection(other, level)
 	end
 end
 
---[[
-function Shape:draw_strike_zone(selected, level)
-	if self.n == 1 then
-		screen.circle(self.x, y_center, self.r)
-		screen.line_width(1)
-		screen.level(math.floor((selected and 4 or 2) * level + 0.5))
-		screen.stroke()
+function Shape:draw_line_blur(selected, dim)
+	if self.mute then
 		return
 	end
-	if not self.mute then
-		local r = (self.r + self.r_strike_min) / 2
-		-- screen.close() -- TODO
-		screen.circle(self.x, y_center, r)
-		screen.line_width(math.max(1, self.r - self.r_strike_min))
-		screen.level(math.floor(((selected and not self.mute) and 4 or 2) * level + 0.5))
-		screen.stroke()
-	else
-		screen.level(math.floor((selected and 6 or 2) * level + 0.5))
-		screen.line_width(1)
-		screen.circle(self.x, y_center, self.r)
-		screen.stroke()
-		screen.circle(self.x, y_center, self.r_strike_min)
-		screen.stroke()
+	local n = self.n
+	if n == 2 then
+		n = 1
+	end
+	if self.blur > 0 then
+		local level = 0
+		if self.n == 2 then
+			level = math.max(self.side_levels[1], self.side_levels[2])
+		else
+			for v = 1, n do
+				level = math.max(level, self.side_levels[v])
+			end
+		end
+		if selected then
+			level = 1 - (1 - level) * 0.6
+		end
+		level = math.floor(1 + self.blur * ((selected and not self.mute) and 4 or 2) * level)
+		if level > 0 then
+			local r = (self.r + self.r_strike_min) / 2
+			screen.circle(self.x, y_center, r)
+			screen.line_width(math.max(1, self.r - self.r_strike_min))
+			screen.level(level)
+			screen.stroke()
+		end
 	end
 end
---]]
 
 function Shape:draw_lines(selected, dim)
 	if self.mute then
@@ -226,35 +252,68 @@ function Shape:draw_lines(selected, dim)
 	if n == 2 then
 		n = 1
 	end
-	for v = 1, n do
-		local vertex1 = self.vertices[v]
-		local vertex2 = self.vertices[v % self.n + 1]
-		local level = self.side_levels[v]
-		if self.n == 2 then
-			level = math.max(level, self.side_levels[v + 1])
+	if self.blur < 1 then
+		for v = 1, n do
+			local vertex1 = self.vertices[v]
+			local vertex2 = self.vertices[v % self.n + 1]
+			local level = self.side_levels[v]
+			if self.n == 2 then
+				level = math.max(level, self.side_levels[v + 1])
+			end
+			if selected then
+				level = 1 - (1 - level) * 0.6
+			end
+			level = level * (1 - self.blur)
+			screen.move(vertex1.x, vertex1.y)
+			screen.line(vertex2.x, vertex2.y)
+			if dim then
+				screen.level(math.floor(2 + level * 4))
+			else
+				screen.level(math.floor(2 + level * 13))
+			end
+			screen.line_width(math.max(1, level * 2.5))
+			screen.stroke()
 		end
-		if selected then
-			level = 1 - (1 - level) * 0.6
-		end
-		screen.move(vertex1.x, vertex1.y)
-		screen.line(vertex2.x, vertex2.y)
-		if dim then
-			screen.level(math.floor(2 + level * 4))
-		else
-			screen.level(math.floor(2 + level * 13))
-		end
-		screen.line_width(math.max(1, level * 2.5))
+	end
+end
+
+function Shape:draw_point_blur(selected, dim)
+	if self.blur <= 0 then
+		return
+	end
+	local avg = 0
+	local max = 0
+	for v = 1, self.n do
+		max = math.max(max, self.vertices[v].level)
+		avg = avg + self.vertices[v].level
+	end
+	avg = avg / self.n
+	local width = (0.5 + avg * 3) * self.blur
+	local level = max
+	if selected then
+		level = 1 - (1 - level) * 0.8
+	end
+	level = level * self.blur
+	level = math.floor(level * (dim and 6 or 9) + (selected and 3 or 1) + 0.5)
+	if level > 0 then
+		screen.circle(self.x, y_center, self.r)
+		screen.line_width(width)
+		screen.level(level)
 		screen.stroke()
 	end
 end
 
 function Shape:draw_points(selected, dim)
+	if self.blur >= 1 then
+		return
+	end
 	for v = 1, self.n do
 		local vertex = self.vertices[v]
 		local level = vertex.level
 		if selected then
 			level = 1 - (1 - level) * 0.8
 		end
+		level = level * (1 - self.blur)
 		screen.circle(vertex.x, vertex.y, 0.5 + level * 3)
 		if dim then
 			screen.level(math.floor(3 + level * 9))
@@ -263,17 +322,34 @@ function Shape:draw_points(selected, dim)
 		end
 		screen.fill()
 	end
-	if selected then
-		local x_clamped = util.clamp(self.x, 0, 128)
-		if self.mute then
-			screen.circle(x_clamped, y_center, 1.55)
-			screen.level(4)
-			screen.stroke()
-		else
-			screen.circle(x_clamped, y_center, 1.1)
-			screen.level(10)
-			screen.fill()
+end
+
+function Shape:draw_center()
+	local x_clamped = util.clamp(self.x, 0, 128)
+	if self.mute then
+		screen.circle(x_clamped, y_center, 1.55)
+		screen.level(4)
+		screen.line_width(1)
+		screen.stroke()
+	else
+		screen.circle(x_clamped, y_center, 1.1)
+		screen.level(10)
+		screen.fill()
+	end
+	if self.blur > 0 then
+		local radius = 7
+		if self.n ~= 2 then
+			radius = math.min(radius, self.r_strike_min - 2)
 		end
+		local rate_angle = arc_zero + self.rate * 2 * math.pi
+		local arc_start = math.min(arc_zero, rate_angle)
+		local arc_end = math.max(arc_zero, rate_angle)
+		screen.arc(self.x, y_center, radius, arc_start, arc_end)
+		screen.level(math.floor(1 + 15 * self.blur))
+		screen.line_width(self.blur)
+		screen.stroke()
+		screen.circle(self.x + math.cos(rate_angle) * 7, y_center + math.sin(rate_angle) * 7, 1.2 * self.blur)
+		screen.fill()
 	end
 end
 

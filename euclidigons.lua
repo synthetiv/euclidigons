@@ -497,6 +497,14 @@ function redraw()
 	local dim = held_keys[3] and output_mode ~= o_ENGINE
 	for s = 1, #shapes do
 		if shapes[s] ~= edit_shape then
+			shapes[s]:draw_line_blur(false, dim)
+		end
+	end
+	if edit_shape ~= nil then
+		edit_shape:draw_line_blur(true, dim)
+	end
+	for s = 1, #shapes do
+		if shapes[s] ~= edit_shape then
 			shapes[s]:draw_lines(false, dim)
 		end
 	end
@@ -508,8 +516,17 @@ function redraw()
 			shapes[s]:draw_points(false, dim)
 		end
 	end
+	for s = 1, #shapes do
+		if shapes[s] ~= edit_shape then
+			shapes[s]:draw_point_blur(false, dim)
+		end
+	end
+	if edit_shape ~= nil then
+		edit_shape:draw_point_blur(true, dim)
+	end
 	if edit_shape ~= nil then
 		edit_shape:draw_points(true, dim)
+		edit_shape:draw_center()
 		if held_keys[2] or (held_keys[3] and output_mode == o_ENGINE) then
 			if held_keys[2] then
 				draw_setting_centered(edit_shape.x, edit_shape.n)
