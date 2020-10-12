@@ -141,7 +141,7 @@ end
 
 function Shape:calculate_blur()
 	local ratio = math.abs(self.rate / self.nyquist_rate)
-	self.blur = util.clamp(ratio - 0.5, 0, 1) ^ 2
+	self.blur = util.clamp(ratio - 0.7, 0, 1) ^ 2
 end
 
 function Shape:calculate_points()
@@ -217,11 +217,11 @@ function Shape:draw_line_blur(selected, dim)
 	if self.mute then
 		return
 	end
-	local n = self.n
-	if n == 2 then
-		n = 1
-	end
 	if self.blur > 0 then
+		local n = self.n
+		if n == 2 then
+			n = 1
+		end
 		local level = 0
 		if self.n == 2 then
 			level = math.max(self.side_levels[1], self.side_levels[2])
@@ -229,9 +229,6 @@ function Shape:draw_line_blur(selected, dim)
 			for v = 1, n do
 				level = math.max(level, self.side_levels[v])
 			end
-		end
-		if selected then
-			level = 1 - (1 - level) * 0.6
 		end
 		level = math.floor(1 + self.blur * ((selected and not self.mute) and 4 or 2) * level)
 		if level > 0 then
@@ -248,11 +245,11 @@ function Shape:draw_lines(selected, dim)
 	if self.mute then
 		return
 	end
-	local n = self.n
-	if n == 2 then
-		n = 1
-	end
 	if self.blur < 1 then
+		local n = self.n
+		if n == 2 then
+			n = 1
+		end
 		for v = 1, n do
 			local vertex1 = self.vertices[v]
 			local vertex2 = self.vertices[v % self.n + 1]
