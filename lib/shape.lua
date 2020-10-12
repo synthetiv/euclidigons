@@ -1,4 +1,60 @@
-Shape = {}
+local ShapeEditBuffer = {}
+
+function ShapeEditBuffer.new(shape)
+	local buffer = {
+		shape = shape,
+		values = {},
+		dirty = false,
+		compare = false
+	}
+	return setmetatable(buffer, ShapeEditBuffer)
+end
+
+function ShapeEditBuffer:__index(index)
+	if self.compare then
+		return ShapeEditBuffer[index] or self.shape[index]
+	end
+	return self.values[index] or ShapeEditBuffer[index] or self.shape[index]
+end
+
+function ShapeEditBuffer:__newindex(index, value)
+	if self.compare then
+		self:reset()
+	end
+	self.values[index] = value
+	if index == 'note' then
+		self.values.midi_note, self.values.note_name, self.values.note_freq = self.shape:get_note_values(value)
+	end
+	self.dirty = true
+end
+
+function ShapeEditBuffer:apply()
+	if not self.compare then
+		self.shape.note = self.note
+		self.shape.output_mode = self.output_mode
+		self.shape.midi_device = self.midi_device
+		self.shape.midi_channel = self.midi_channel
+	end
+	self:reset()
+end
+
+function ShapeEditBuffer:undo()
+	self.compare = not self.compare
+end
+
+function ShapeEditBuffer:reset()
+	self.values.note = nil
+	self.values.midi_note = nil
+	self.values.note_name = nil
+	self.values.note_freq = nil
+	self.values.output_mode = nil
+	self.values.midi_device = nil
+	self.values.midi_channel = nil
+	self.dirty = false
+	self.compare = false
+end
+
+local Shape = {}
 
 local next_id = 1
 
@@ -25,6 +81,7 @@ function Shape.new(note, n, r, x, rate)
 		side_levels = {},
 		voices = {}
 	}
+	shape.edits = ShapeEditBuffer.new(shape)
 	setmetatable(shape, Shape)
 	-- initialize with 'n' sides and note 'note'
 	shape.r = r
@@ -32,6 +89,17 @@ function Shape.new(note, n, r, x, rate)
 	shape.note = note
 	next_id = next_id + 1
 	return shape
+end
+
+function Shape:get_note_values(note)
+	local scale_degrees = #scale
+	local degree = (note - 1) % #scale + 1
+	local octave = math.floor((note - 1) / #scale)
+	local note_num = util.clamp(scale[degree] + octave * 12, 0, 127)
+	-- font 2 doesn't have a real 'sharp' character
+	local note_name = string.gsub(musicutil.note_num_to_name(note_num, true), '♯', '#')
+	local note_freq = musicutil.note_num_to_freq(note_num)
+	return note_num, note_name, note_freq
 end
 
 function Shape:__newindex(index, value)
@@ -43,14 +111,8 @@ function Shape:__newindex(index, value)
 		self._r = value
 		self:calculate_area()
 	elseif index == 'note' then
-		self._note = value -- TODO: clamp here instead of below
-		local scale_degrees = #scale
-		local degree = (value - 1) % #scale + 1
-		local octave = math.floor((value - 1) / #scale)
-		local note_num = util.clamp(scale[degree] + octave * 12, 0, 127)
-		self.note_name = musicutil.note_num_to_name(note_num, true)
-		self.note_freq = musicutil.note_num_to_freq(note_num)
-		self.midi_note = note_num
+		self._note = value -- TODO: clamp here instead of in get_note_values()
+		self.midi_note, self.note_name, self.note_freq = self:get_note_values(value)
 	end
 end
 
