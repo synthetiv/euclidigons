@@ -491,6 +491,7 @@ end
 
 function redraw()
 	screen.clear()
+	screen.stroke()
 	screen.aa(1)
 	screen.font_face(1)
 	screen.line_cap('butt')
