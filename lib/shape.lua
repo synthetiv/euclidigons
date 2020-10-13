@@ -141,7 +141,7 @@ end
 
 function Shape:calculate_blur()
 	local ratio = math.abs(self.rate / self.nyquist_rate)
-	self.blur = util.clamp(ratio - 0.7, 0, 1) ^ 2
+	self.blur = util.clamp((ratio * 3 - 2), 0, 1) ^ 2
 end
 
 function Shape:calculate_points()
