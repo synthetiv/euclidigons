@@ -207,7 +207,7 @@ function Shape:update_guide_for_intersection(other, level)
 	local self_other_max = math.min(math.max(outer, self_other), self.x + self.r, other.x + other.r)
 	local other_self_min = math.max(math.min(outer, other_self), self.x - self.r, other.x - other.r)
 	local other_self_max = math.min(math.max(outer, other_self), self.x + self.r, other.x + other.r)
-	for x = math.floor(math.min(self_other_min, other_self_min)), math.ceil(math.max(self_other_max, other_self_max)) do
+	for x = math.max(1, math.floor(math.min(self_other_min, other_self_min))), math.min(128, math.ceil(math.max(self_other_max, other_self_max))) do
 		guide.other_edit[x] = math.max(guide.other_edit[x], math.min(x - self_other_min, self_other_max - x + 1))
 		guide.edit_other[x] = math.max(guide.edit_other[x], math.min(x - other_self_min, other_self_max - x + 1))
 	end
