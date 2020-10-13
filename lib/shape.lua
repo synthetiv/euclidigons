@@ -345,7 +345,7 @@ function Shape:draw_center()
 		screen.level(math.floor(1 + 15 * self.blur))
 		screen.line_width(self.blur)
 		screen.stroke()
-		screen.circle(self.x + math.cos(rate_angle) * 7, y_center + math.sin(rate_angle) * 7, 1.2 * self.blur)
+		screen.circle(self.x + math.cos(rate_angle) * radius, y_center + math.sin(rate_angle) * radius, 1.2 * self.blur)
 		screen.fill()
 	end
 end
