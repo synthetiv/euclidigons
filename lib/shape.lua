@@ -96,8 +96,7 @@ function Shape:get_note_values(note)
 	local degree = (note - 1) % #scale + 1
 	local octave = math.floor((note - 1) / #scale)
 	local note_num = util.clamp(scale[degree] + octave * 12, 0, 127)
-	-- font 2 doesn't have a real 'sharp' character
-	local note_name = string.gsub(musicutil.note_num_to_name(note_num, true), '♯', '#')
+	local note_name = musicutil.note_num_to_name(note_num, true)
 	local note_freq = musicutil.note_num_to_freq(note_num)
 	return note_num, note_name, note_freq
 end
