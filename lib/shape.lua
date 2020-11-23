@@ -30,10 +30,10 @@ end
 
 function ShapeEditBuffer:apply()
 	if not self.compare then
-		self.shape.note = self.note
-		self.shape.output_mode = self.output_mode
-		self.shape.midi_device = self.midi_device
-		self.shape.midi_channel = self.midi_channel
+		self.shape.params.note = self.note
+		self.shape.params.output_mode = self.output_mode
+		self.shape.params.midi_device = self.midi_device
+		self.shape.params.midi_channel = self.midi_channel
 	end
 	self:reset()
 end
@@ -55,40 +55,40 @@ function ShapeEditBuffer:reset()
 end
 
 local Shape = {}
+Shape.__index = Shape
 
 local next_id = 1
 
-function Shape.new(note, n, r, x, rate)
+function Shape.new(param_group)
 	local shape = {
 		id = next_id,
-		_note = 1,
-		note_name = 'A3',
-		note_freq = 440,
 		output_mode = o_ENGINE,
-		midi_note = 69,
 		midi_device = 1,
 		midi_channel = 1,
-		mute = true,
-		_n = 0,
-		area = 0,
-		_r = r,
-		delta_x = 0,
-		x = x,
-		nx = x,
-		rate = rate,
+		active = false,
+		n = 0,
+		r = 0,
+		x = 0,
+		nx = 0,
 		theta = 0,
 		vertices = {},
 		side_levels = {},
-		voices = {}
+		voices = {},
+		params = param_group
 	}
-	shape.edits = ShapeEditBuffer.new(shape)
 	setmetatable(shape, Shape)
-	-- initialize with 'n' sides and note 'note'
-	shape.r = r
-	shape.n = n
-	shape.note = note
+	shape.edits = ShapeEditBuffer.new(shape)
+	param_group.shape = shape
+	param_group.in_use = 1
+	param_group:update_shape()
 	next_id = next_id + 1
 	return shape
+end
+
+function Shape:update_params()
+	for i, id in self.params.ids do
+		self.params[id] = self[id]
+	end
 end
 
 function Shape:get_note_values(note)
@@ -99,31 +99,6 @@ function Shape:get_note_values(note)
 	local note_name = musicutil.note_num_to_name(note_num, true)
 	local note_freq = musicutil.note_num_to_freq(note_num)
 	return note_num, note_name, note_freq
-end
-
-function Shape:__newindex(index, value)
-	if index == 'n' then
-		self._n = value
-		self:calculate_points()
-		self:calculate_area()
-	elseif index == 'r' then
-		self._r = value
-		self:calculate_area()
-	elseif index == 'note' then
-		self._note = value -- TODO: clamp here instead of in get_note_values()
-		self.midi_note, self.note_name, self.note_freq = self:get_note_values(value)
-	end
-end
-
-function Shape:__index(index)
-	if index == 'n' then
-		return self._n
-	elseif index == 'r' then
-		return self._r
-	elseif index == 'note' then
-		return self._note
-	end
-	return Shape[index]
 end
 
 function Shape:calculate_points()
@@ -162,8 +137,6 @@ end
 
 function Shape:tick()
 	self.x = self.nx
-	self.nx = self.nx + self.delta_x
-	self.delta_x = 0
 	self.theta = self.theta + self.rate
 	while self.theta > tau do
 		self.theta = self.theta - tau
@@ -172,7 +145,7 @@ function Shape:tick()
 end
 
 function Shape:draw_lines(selected, dim)
-	if self.mute then
+	if not self.active then
 		return
 	end
 	local n = self.n
@@ -218,7 +191,7 @@ function Shape:draw_points(selected, dim)
 	end
 	if selected then
 		local x_clamped = util.clamp(self.x, 0, 128)
-		if self.mute then
+		if not self.active then
 			screen.circle(x_clamped, y_center, 1.55)
 			screen.level(4)
 			screen.stroke()
@@ -332,7 +305,7 @@ end
 function Shape:check_intersection(other)
 
 	-- if either shape is muted, skip calculation
-	if (mute_style == m_BOTH and self.mute) or other.mute then
+	if (mute_style == m_BOTH and not self.active) or not other.active then
 		return
 	end
 

@@ -53,6 +53,7 @@ for v = 1, num_voices do
 	voice_manager.style.slots[v].on_steal = voice_remove
 end
 
+ShapeParamGroup = include 'lib/shape_param_group'
 Shape = include 'lib/shape'
 midi_out = include 'lib/midi'
 
@@ -60,7 +61,9 @@ tau = math.pi * 2
 y_center = 32.5
 
 edit_shape = nil
-shapes = {}
+num_shapes = 9
+shape_param_groups = {}
+shapes = {} -- sorted by position, size, id
 
 rate = 1 / 48
 
@@ -119,12 +122,15 @@ function get_next_shape(direction)
 	end
 end
 
-function delete_shape()
-	local own_voices = edit_shape.voices
+-- TODO: I think I'd like to move at least some of this logic to the Shape table
+function delete_shape(shape)
+	shape = shape or edit_shape
+	local is_edit_shape = shape == edit_shape
+	local own_voices = shape.voices
 	local found = false
-	-- remove edit_shape from shapes table, and remove references from voices table
+	-- remove shape from shapes table, and remove references from voices table
 	for s = 1, #shapes do
-		if shapes[s] == edit_shape then
+		if shapes[s] == shape then
 			found = true
 		end
 		if found then
@@ -133,48 +139,70 @@ function delete_shape()
 		if shapes[s] then -- this will be nil for the final value of `s`
 			local other_id = shapes[s].id
 			local other_voices = shapes[s].voices
-			-- release voices played by edit_shape
+			-- release voices played by shape
 			for v, voice in ipairs(other_voices) do
-				if voice.other == edit_shape then
+				if voice.other == shape then
 					voice:release()
 				end
 			end
 		end
 	end
-	-- release edit_shape's own voices
+	-- release shape's own voices
 	for v, voice in ipairs(own_voices) do
 		voice:release()
 	end
-	-- select another shape
-	if #shapes > 0 then
-		edit_shape = get_next_shape(-1) or shapes[1]
-	else
-		edit_shape = nil
+	-- unlink from param group
+	shape.params.shape = nil
+	shape.params.in_use = 0
+	if is_edit_shape then
+		-- select another shape
+		if #shapes > 0 then
+			edit_shape = get_next_shape(-1) or shapes[1]
+		else
+			edit_shape = nil
+		end
+	end
+end
+
+function get_unused_param_group()
+	for i = 1, num_shapes do
+		if shape_param_groups[i].shape == nil then
+			return shape_param_groups[i]
+		end
 	end
 end
 
 function insert_shape()
+	-- bail if we're out of shapes
 	if #shapes >= 9 then
 		return
 	end
+	-- take on attributes of current shape, if any
 	local note = 1
 	local output_mode = o_ENGINE
 	local midi_device = 1
 	local midi_channel = 1
 	if edit_shape then
+		tab.print(edit_shape)
 		note = edit_shape.note - 4
 		output_mode = edit_shape.output_mode
 		midi_device = edit_shape.midi_device
 		midi_channel = edit_shape.midi_channel
 	end
+	-- randomize a few attributes
 	local radius = math.random(13, 30)
-	local rate = math.random() * 15 + 10
-	rate = tau / (rate * rate)
+	local rate = math.random()
 	rate = rate * (math.random(2) - 1.5) * 2 -- randomize sign
-	edit_shape = Shape.new(note, math.random(3, 9), radius, math.random(radius, 128 - radius) + 0.5, rate)
-	edit_shape.output_mode = output_mode
-	edit_shape.midi_device = midi_device
-	edit_shape.midi_channel = midi_channel
+	-- get the next unused param group and populate it
+	local group = get_unused_param_group() -- should never be nil; if it is, we have bigger problems
+	edit_shape = Shape.new(group)
+	group.note = note
+	group.n = math.random(3, 9)
+	group.r = radius
+	group.x = math.random(radius, 128 - radius) + 0.5
+	group.rate = rate
+	-- create a shape
+	-- add to main shapes table
 	table.insert(shapes, edit_shape)
 end
 
@@ -205,11 +233,6 @@ function init()
 	
 	norns.enc.sens(1, 4) -- shape selection
 	norns.enc.accel(1, false)
-
-	for s = 1, 2 do
-		insert_shape()
-		edit_shape.mute = false
-	end
 
 	local scale_names = {}
 	for i = 1, #musicutil.SCALES do
@@ -377,7 +400,7 @@ function init()
 			if value == 5 then
 				return 'multi (per shape)'
 			else
-				return midi_out.devices[value].name
+				return midi_out.devices[value].name -- TODO: why is crow showing up here?!
 			end
 		end,
 		action = function(value)
@@ -431,6 +454,34 @@ function init()
 			midi_out:clear_async()
 		end
 	}
+
+	params:add_separator('shapes')
+
+	for n = 1, num_shapes do
+		shape_param_groups[n] = ShapeParamGroup.new(n)
+	end
+
+	-- TODO: add a trigger to reindex shape params (make param groups match screen order)
+	params:add{
+		type = 'trigger',
+		id = 'renumber_shapes',
+		name = 'renumber shapes',
+		action = function()
+			for n = 1, num_shapes do
+				shape_param_groups[n].shape = nil
+			end
+			for n = 1, #shapes do
+				shape_param_groups[n].shape = shapes[n]
+				shapes[n].params = shape_param_groups[n]
+				shapes[n]:update_params()
+			end
+		end
+	}
+
+	for s = 1, 2 do
+		insert_shape()
+		edit_shape.params.active = 1
+	end
 
 	params:bang()
 
@@ -588,7 +639,7 @@ function key(n, z)
 				if edit_shape.edits.dirty then
 					edit_shape.edits:apply()
 				elseif k3_time > now - 0.25 then
-					edit_shape.mute = not edit_shape.mute
+					edit_shape.params.active = 1 - edit_shape.params.active
 				end
 			end
 		end
@@ -620,20 +671,20 @@ function enc(n, d)
 		if edit_shape ~= nil then
 			if held_keys[2] then
 				-- set rotation rate
-				edit_shape.rate = edit_shape.rate + d * 0.0015
+				edit_shape.params:delta('rate', d)
 			elseif held_keys[3] then
 				-- set note
 				edit_shape.edits.note = edit_shape.edits.note + d
 			else
 				-- set position
-				edit_shape.delta_x = edit_shape.delta_x + d * 0.5
+				edit_shape.params:delta('x', d)
 			end
 		end
 	elseif n == 3 then
 		if edit_shape ~= nil then
 			if held_keys[2] then
 				-- set number of sides
-				edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
+				edit_shape.params:delta('n', d)
 			elseif held_keys[3] then
 				k3_time = 0
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
@@ -660,7 +711,7 @@ function enc(n, d)
 				end
 			else
 				-- set size
-				edit_shape.r = math.max(edit_shape.r + d * 0.5, 1)
+				edit_shape.params:delta('r', d)
 			end
 		end
 	end
