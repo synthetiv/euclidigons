@@ -562,6 +562,7 @@ function key(n, z)
 	if n == 1 then
 		if z == 1 then
 			if held_keys[3] then
+				k3_time = 0
 				if edit_shape ~= nil and edit_shape.edits.dirty then
 					edit_shape.edits:undo()
 				end
@@ -570,6 +571,7 @@ function key(n, z)
 	elseif n == 2 then
 		if z == 1 then
 			if held_keys[3] then
+				k3_time = 0
 				delete_shape()
 			end
 		end
@@ -633,6 +635,7 @@ function enc(n, d)
 				-- set number of sides
 				edit_shape.n = util.clamp(edit_shape.n + d, 1, 9)
 			elseif held_keys[3] then
+				k3_time = 0
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
 					-- device and channel are either fixed or irrelevant; set octave
 					edit_shape.edits.note = edit_shape.edits.note + d * #scale
