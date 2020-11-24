@@ -94,7 +94,7 @@ end
 
 function Shape:tick()
 	self.x = self.nx
-	self.theta = self.theta + self.rate
+	self.params.theta = self.theta + self.rate
 	while self.theta > tau do
 		self.theta = self.theta - tau
 	end

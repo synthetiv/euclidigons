@@ -12,6 +12,7 @@ ShapeParamGroup.param_ids = {
 	'n',
 	'r',
 	'x',
+	'theta',
 	'rate',
 	'in_use'
 }
@@ -27,7 +28,7 @@ function ShapeParamGroup.new(index)
 		params = {}
 	}
 
-	params:add_group('shape ' .. index, 9)
+	params:add_group('shape ' .. index, 10)
 
 	params:add{
 		type = 'number',
@@ -175,6 +176,22 @@ function ShapeParamGroup.new(index)
 		end
 	}
 	
+	params:add{
+		type = 'control',
+		id = prefix .. 'theta',
+		name = 'angle',
+		controlspec = controlspec.new(0, tau, 'lin', 0, 0, '', 0.01, true),
+		action = function(value)
+			if group.shape ~= nil then
+				group.shape.theta = value
+			end
+		end,
+		formatter = function(param)
+			local value = param:get()
+			return string.format('%d°', util.round(value * 360 / tau))
+		end,
+	}
+
 	-- 'in use' is a hidden param that causes shapes to be created/destroyed as
 	-- needed when restoring a pset
 	params:add{
