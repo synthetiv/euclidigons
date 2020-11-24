@@ -159,6 +159,8 @@ function delete_shape(shape)
 	end
 end
 
+--- find the next param group not associated with an existing shape
+-- @return a ShapeParamGroup table
 function get_unused_param_group()
 	for i = 1, num_shapes do
 		if shape_param_groups[i].shape == nil then
@@ -167,6 +169,7 @@ function get_unused_param_group()
 	end
 end
 
+--- add a new shape, copying some properties from the currently selected shape
 function insert_shape()
 	-- bail if we're out of shapes
 	if #shapes >= 9 then
@@ -191,12 +194,11 @@ function insert_shape()
 	-- get the next unused param group and populate it
 	local group = get_unused_param_group() -- should never be nil; if it is, we have bigger problems
 	edit_shape = Shape.new(group)
-	group.note = note
+	group.note = note -- TODO: not entirely convinced this is working?
 	group.n = math.random(3, 9)
 	group.r = radius
 	group.x = math.random(radius, 128 - radius) + 0.5
 	group.rate = rate
-	-- create a shape
 	-- add to main shapes table
 	table.insert(shapes, edit_shape)
 end
