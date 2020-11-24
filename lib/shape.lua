@@ -135,6 +135,17 @@ function Shape:calculate_area()
 	self.area = area
 end
 
+function Shape:free()
+	-- release/free voices
+	local voices = self.voices
+	for v, voice in ipairs(voices) do
+		voice:release()
+	end
+	-- unlink from param group
+	self.params.shape = nil
+	self.params.in_use = 0
+end
+
 function Shape:tick()
 	self.x = self.nx
 	self.theta = self.theta + self.rate

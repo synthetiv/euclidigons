@@ -122,13 +122,13 @@ function get_next_shape(direction)
 	end
 end
 
--- TODO: I think I'd like to move at least some of this logic to the Shape table
+--- remove a shape
+-- @param shape a Shape table, or nil to delete the currently selected shape
 function delete_shape(shape)
 	shape = shape or edit_shape
 	local is_edit_shape = shape == edit_shape
-	local own_voices = shape.voices
 	local found = false
-	-- remove shape from shapes table, and remove references from voices table
+	-- remove shape from shapes table, and remove references from other shapes' voices tables
 	for s = 1, #shapes do
 		if shapes[s] == shape then
 			found = true
@@ -147,13 +147,8 @@ function delete_shape(shape)
 			end
 		end
 	end
-	-- release shape's own voices
-	for v, voice in ipairs(own_voices) do
-		voice:release()
-	end
-	-- unlink from param group
-	shape.params.shape = nil
-	shape.params.in_use = 0
+	-- free voices and params
+	shape:free()
 	if is_edit_shape then
 		-- select another shape
 		if #shapes > 0 then
