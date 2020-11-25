@@ -11,7 +11,6 @@ function Shape.new(param_group)
 		output_mode = o_ENGINE,
 		midi_device = 1,
 		midi_channel = 1,
-		active = false,
 		n = 0,
 		r = 0,
 		x = 0,
@@ -32,8 +31,10 @@ function Shape.new(param_group)
 end
 
 function Shape:update_params()
-	for i, id in self.params.ids do
-		self.params[id] = self[id]
+	for i, id in ipairs(self.params.param_ids) do
+		if id ~= 'in_use' then
+			self.params[id] = self[id]
+		end
 	end
 end
 
@@ -94,15 +95,19 @@ end
 
 function Shape:tick()
 	self.x = self.nx
-	self.params.theta = self.theta + self.rate
+	self.params.theta = self.theta + (self.rate * tau * rate)
 	while self.theta > tau do
 		self.theta = self.theta - tau
 	end
 	self:calculate_points()
 end
 
+function Shape:is_active()
+	return self.active == 1
+end
+
 function Shape:draw_lines(selected, dim)
-	if not self.active then
+	if not self:is_active() then
 		return
 	end
 	local n = self.n
@@ -148,7 +153,7 @@ function Shape:draw_points(selected, dim)
 	end
 	if selected then
 		local x_clamped = util.clamp(self.x, 0, 128)
-		if not self.active then
+		if not self:is_active() then
 			screen.circle(x_clamped, y_center, 1.55)
 			screen.level(4)
 			screen.stroke()
@@ -262,7 +267,7 @@ end
 function Shape:check_intersection(other)
 
 	-- if either shape is muted, skip calculation
-	if (mute_style == m_BOTH and not self.active) or not other.active then
+	if (mute_style == m_BOTH and not self:is_active()) or not other:is_active() then
 		return
 	end
 

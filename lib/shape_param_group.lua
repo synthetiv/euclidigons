@@ -63,7 +63,7 @@ function ShapeParamGroup.new(index)
 		default = 1,
 		action = function(value)
 			if group.shape ~= nil then
-				group.shape.active = value == 1 -- TODO: fix this!!
+				group.shape.output_mode = value
 			end
 		end
 	}
@@ -111,7 +111,7 @@ function ShapeParamGroup.new(index)
 		default = 0,
 		action = function(value)
 			if group.shape ~= nil then
-				group.shape.active = (value == 1)
+				group.shape.active = value
 			end
 		end,
 		formatter = function(param)
@@ -171,7 +171,7 @@ function ShapeParamGroup.new(index)
 		controlspec = controlspec.new(-4, 4, 'lin', 0, 0, '', 0.0005),
 		action = function(value)
 			if group.shape ~= nil then
-				group.shape.rate = value * tau * rate
+				group.shape.rate = value
 			end
 		end
 	}
@@ -180,7 +180,7 @@ function ShapeParamGroup.new(index)
 		type = 'control',
 		id = prefix .. 'theta',
 		name = 'angle',
-		controlspec = controlspec.new(0, tau, 'lin', 0, 0, '', 0.01, true),
+		controlspec = controlspec.new(0, tau, 'lin', 0, 0, '', 0.01, true), -- TODO: wrap doesn't seem to apply to MIDI
 		action = function(value)
 			if group.shape ~= nil then
 				group.shape.theta = value

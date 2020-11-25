@@ -457,15 +457,21 @@ function init()
 		shape_param_groups[n] = ShapeParamGroup.new(n)
 	end
 
-	-- TODO: add a trigger to reindex shape params (make param groups match screen order)
 	params:add{
 		type = 'trigger',
-		id = 'renumber_shapes',
-		name = 'renumber shapes',
+		id = 'reassign_shape_numbers',
+		name = 'reassign shape numbers',
 		action = function()
+			-- unlink all shapes from param groups
 			for n = 1, num_shapes do
+				if shape_param_groups[n].shape then
+					shape_param_groups[n].shape.params = nil
+				end
 				shape_param_groups[n].shape = nil
 			end
+			-- sort shapes
+			table.sort(shapes, compare_shapes)
+			-- relink in left-to-right (and radius, and id) order
 			for n = 1, #shapes do
 				shape_param_groups[n].shape = shapes[n]
 				shapes[n].params = shape_param_groups[n]
