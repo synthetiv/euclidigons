@@ -202,14 +202,11 @@ function ShapeParamGroup.new(index)
 		max = 1,
 		default = 0,
 		action = function(value)
-			print('in use?', value)
 			if group.shape == nil and value == 1 then
 				group.shape = Shape.new(group)
-				print('insert shape')
 				table.insert(shapes, group.shape)
 				edit_shape = group.shape
 			elseif group.shape ~= nil and value == 0 then
-				print('delete shape')
 				delete_shape(group.shape)
 			end
 		end

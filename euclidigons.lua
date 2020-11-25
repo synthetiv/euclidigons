@@ -181,7 +181,6 @@ function insert_shape()
 	local midi_device = 1
 	local midi_channel = 1
 	if edit_shape then
-		tab.print(edit_shape)
 		note = edit_shape.note - 4
 		output_mode = edit_shape.output_mode
 		midi_device = edit_shape.midi_device
