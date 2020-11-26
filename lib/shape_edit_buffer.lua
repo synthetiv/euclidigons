@@ -1,8 +1,7 @@
 local ShapeEditBuffer = {}
 
-function ShapeEditBuffer.new(shape)
+function ShapeEditBuffer.new()
 	local buffer = {
-		shape = shape,
 		values = {},
 		dirty = false,
 		compare = false
@@ -12,9 +11,9 @@ end
 
 function ShapeEditBuffer:__index(index)
 	if self.compare then
-		return ShapeEditBuffer[index] or self.shape[index]
+		return ShapeEditBuffer[index] or edit_shape[index]
 	end
-	return self.values[index] or ShapeEditBuffer[index] or self.shape[index]
+	return self.values[index] or ShapeEditBuffer[index] or edit_shape[index]
 end
 
 function ShapeEditBuffer:__newindex(index, value)
@@ -23,17 +22,17 @@ function ShapeEditBuffer:__newindex(index, value)
 	end
 	self.values[index] = value
 	if index == 'note' then
-		self.values.midi_note, self.values.note_name, self.values.note_freq = self.shape:get_note_values(value)
+		self.values.midi_note, self.values.note_name, self.values.note_freq = edit_shape:get_note_values(value)
 	end
 	self.dirty = true
 end
 
 function ShapeEditBuffer:apply()
 	if not self.compare then
-		self.shape.params.note = self.note
-		self.shape.params.output_mode = self.output_mode
-		self.shape.params.midi_device = self.midi_device
-		self.shape.params.midi_channel = self.midi_channel
+		edit_shape.params.note = self.note
+		edit_shape.params.output_mode = self.output_mode
+		edit_shape.params.midi_device = self.midi_device
+		edit_shape.params.midi_channel = self.midi_channel
 	end
 	self:reset()
 end

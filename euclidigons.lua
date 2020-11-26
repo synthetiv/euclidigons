@@ -53,6 +53,7 @@ for v = 1, num_voices do
 	voice_manager.style.slots[v].on_steal = voice_remove
 end
 
+ShapeEditBuffer = include 'lib/shape_edit_buffer'
 ShapeParamGroup = include 'lib/shape_param_group'
 Shape = include 'lib/shape'
 midi_out = include 'lib/midi'
@@ -64,6 +65,8 @@ edit_shape = nil
 num_shapes = 9
 shape_param_groups = {}
 shapes = {} -- sorted by position, size, id
+
+edits = ShapeEditBuffer.new()
 
 rate = 1 / 48
 
@@ -515,11 +518,11 @@ function init()
 end
 
 function draw_undo()
-	if edit_shape.edits.dirty then
+	if edits.dirty then
 		screen.font_face(2)
 		screen.level(5)
 		screen.move(0, 10)
-		if edit_shape.edits.compare then
+		if edits.compare then
 			screen.text('hold K1: redo')
 		else
 			screen.text('hold K1: undo')
@@ -553,14 +556,14 @@ function redraw()
 			if held_keys[2] then
 				draw_setting_centered(edit_shape.x, edit_shape.n)
 			elseif held_keys[3] then
-				draw_setting_centered(edit_shape.x, edit_shape.edits.note_name)
+				draw_setting_centered(edit_shape.x, edits.note_name)
 				draw_undo()
 			end
 		elseif held_keys[3] then
 			draw_undo()
 			screen.font_face(2)
-			local mode = (output_mode or edit_shape.edits.output_mode)
-			local device = (midi_out.device or edit_shape.edits.midi_device)
+			local mode = (output_mode or edits.output_mode)
+			local device = (midi_out.device or edits.midi_device)
 			local y = 10
 			if output_mode == nil or midi_out.device == nil then
 				if mode == o_ENGINE then
@@ -574,14 +577,14 @@ function redraw()
 				y = y + 10
 			end
 			if midi_out.channel == nil then
-				local channel = (midi_out.channel or edit_shape.edits.midi_channel)
+				local channel = (midi_out.channel or edits.midi_channel)
 				if mode == o_ENGINE then
 					channel = '-'
 				end
 				draw_setting(y, 'channel:', channel)
 				y = y + 10
 			end
-			draw_setting(y, 'note:', string.format('%s (%s)', edit_shape.edits.midi_note, edit_shape.edits.note_name))
+			draw_setting(y, 'note:', string.format('%s (%s)', edits.midi_note, edits.note_name))
 		end
 	end
 	screen.update()
@@ -616,8 +619,8 @@ function key(n, z)
 		if z == 1 then
 			if held_keys[3] then
 				k3_time = 0
-				if edit_shape ~= nil and edit_shape.edits.dirty then
-					edit_shape.edits:undo()
+				if edit_shape ~= nil and edits.dirty then
+					edits:undo()
 				end
 			end
 		end
@@ -638,8 +641,8 @@ function key(n, z)
 			end
 		else
 			if edit_shape ~= nil then
-				if edit_shape.edits.dirty then
-					edit_shape.edits:apply()
+				if edits.dirty then
+					edits:apply()
 				elseif k3_time > now - 0.25 then
 					edit_shape.params.active = 1 - edit_shape.params.active
 				end
@@ -676,7 +679,7 @@ function enc(n, d)
 				edit_shape.params:delta('rate', d)
 			elseif held_keys[3] then
 				-- set note
-				edit_shape.edits.note = edit_shape.edits.note + d
+				edits.note = edits.note + d
 			else
 				-- set position
 				edit_shape.params:delta('x', d)
@@ -691,9 +694,8 @@ function enc(n, d)
 				k3_time = 0
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
 					-- device and channel are either fixed or irrelevant; set octave
-					edit_shape.edits.note = edit_shape.edits.note + d * #scale
+					edits.note = edits.note + d * #scale
 				else
-					local edits = edit_shape.edits
 					local next_mode = edits.output_mode + d
 					local can_change_mode = output_mode == nil and (next_mode >= 1 and next_mode <= 2)
 					local next_device = edits.midi_device + d

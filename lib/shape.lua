@@ -1,5 +1,3 @@
-local ShapeEditBuffer = include 'lib/shape_edit_buffer'
-
 local Shape = {}
 Shape.__index = Shape
 
@@ -22,7 +20,6 @@ function Shape.new(param_group)
 		params = param_group
 	}
 	setmetatable(shape, Shape)
-	shape.edits = ShapeEditBuffer.new(shape)
 	param_group.shape = shape
 	param_group.in_use = 1
 	param_group:update_shape()
