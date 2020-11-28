@@ -9,10 +9,10 @@ ShapeParamGroup.param_ids = {
 	'midi_device',
 	'midi_channel',
 	'active',
-	'n',
-	'r',
+	'num_sides',
+	'radius',
 	'x',
-	'theta',
+	'angle',
 	'rate',
 	'in_use'
 }
@@ -60,12 +60,7 @@ function ShapeParamGroup.new(index)
 		id = prefix .. 'output_mode',
 		name = 'output mode',
 		options = { 'engine', 'midi', 'both' },
-		default = 1,
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.output_mode = value
-			end
-		end
+		default = 1
 	}
 
 	-- TODO: show/hide
@@ -76,11 +71,6 @@ function ShapeParamGroup.new(index)
 		min = 1,
 		max = 4,
 		default = 1,
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.midi_device = value
-			end
-		end,
 		formatter = function(param)
 			value = param:get()
 			return midi_out.devices[value].name
@@ -94,12 +84,7 @@ function ShapeParamGroup.new(index)
 		name = 'midi channel',
 		min = 1,
 		max = 16,
-		default = 1,
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.midi_channel = value
-			end
-		end
+		default = 1
 	}
 
 	params:add{
@@ -109,11 +94,6 @@ function ShapeParamGroup.new(index)
 		min = 0,
 		max = 1,
 		default = 0,
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.active = value
-			end
-		end,
 		formatter = function(param)
 			value = param:get()
 			return (value == 1) and 'on' or 'off'
@@ -122,28 +102,14 @@ function ShapeParamGroup.new(index)
 
 	params:add{
 		type = 'number',
-		id = prefix .. 'n',
+		id = prefix .. 'num_sides',
 		name = 'sides',
 		min = 1,
 		max = 9,
 		default = 3,
 		action = function(value)
 			if group.shape ~= nil then
-				group.shape.n = value
-				group.shape:calculate_points()
-				group.shape:calculate_area()
-			end
-		end
-	}
-
-	params:add{
-		type = 'control',
-		id = prefix .. 'r',
-		name = 'radius',
-		controlspec = controlspec.new(1, 128, 'lin', 0, 16, '', 0.01),
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.r = value
+				group.shape:initialize_points()
 				group.shape:calculate_area()
 			end
 		end
@@ -153,10 +119,17 @@ function ShapeParamGroup.new(index)
 		type = 'control',
 		id = prefix .. 'x',
 		name = 'x',
-		controlspec = controlspec.new(-128, 256, 'lin', 0, 64, '', 0.002),
+		controlspec = controlspec.new(-128, 256, 'lin', 0, 64, '', 0.002)
+	}
+
+	params:add{
+		type = 'control',
+		id = prefix .. 'radius',
+		name = 'radius',
+		controlspec = controlspec.new(1, 128, 'lin', 0, 16, '', 0.01),
 		action = function(value)
 			if group.shape ~= nil then
-				group.shape.nx = value
+				group.shape:calculate_area()
 			end
 		end
 	}
@@ -168,24 +141,14 @@ function ShapeParamGroup.new(index)
 		-- TODO: vary with tempo: rotations per beat (this is currently rotations per 1/4 second)
 		-- TODO: bipolar exponential warp?
 		-- TODO: vary min/max with number of sides...? (two-sided shape can't spin very fast)
-		controlspec = controlspec.new(-4, 4, 'lin', 0, 0, '', 0.0005),
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.rate = value
-			end
-		end
+		controlspec = controlspec.new(-4, 4, 'lin', 0, 0, '', 0.0005)
 	}
 	
 	params:add{
 		type = 'control',
-		id = prefix .. 'theta',
+		id = prefix .. 'angle',
 		name = 'angle',
 		controlspec = controlspec.new(0, tau, 'lin', 0, 0, '', 0.01, true), -- TODO: wrap doesn't seem to apply to MIDI
-		action = function(value)
-			if group.shape ~= nil then
-				group.shape.theta = value
-			end
-		end,
 		formatter = function(param)
 			local value = param:get()
 			return string.format('%d°', util.round(value * 360 / tau))
@@ -213,6 +176,7 @@ function ShapeParamGroup.new(index)
 	}
 	params:hide(prefix .. 'in_use')
 
+	-- populate a table of all params, so we don't need to call lookup_param() for every set/get
 	for i, id in ipairs(ShapeParamGroup.param_ids) do
 		group.params[id] = params:lookup_param(prefix .. id)
 	end
@@ -224,23 +188,31 @@ end
 -- @tparam string index usually a param name, or 'shape' to connect to a Shape table
 -- @tparam mixed value new value
 function ShapeParamGroup:__newindex(index, value)
-	-- allow `shape` field to be set directly
 	if index == 'shape' then
+		-- allow `shape` field to be set directly
 		rawset(self, index, value)
-	end
-	-- otherwise, forward to params
-	if self.params[index] ~= nil then
+	elseif self.params[index] ~= nil then
+		-- otherwise, forward to params
 		self.params[index]:set(value)
+	else
+		error(string.format('group %d: set missing param: %s', self.index, index))
 	end
 end
 
 --- make `group.x` syntactic sugar for `params:get('shape_#_x')`
 -- @tparam string index param name
 function ShapeParamGroup:__index(index)
-	if self.params[index] ~= nil then
+	if index == 'shape' then
+		-- allow `shape` field to be read directly (even if it's nil)
+		return rawget(self, index)
+	elseif ShapeParamGroup[index] ~= nil then
+		-- otherwise, forward to metatable or params
+		return ShapeParamGroup[index]
+	elseif self.params[index] ~= nil then
 		return self.params[index]:get()
+	else
+		error(string.format('group %d: get missing param: %s', self.index, index))
 	end
-	return ShapeParamGroup[index]
 end
 
 --- increment/decrement a parameter
@@ -258,6 +230,31 @@ function ShapeParamGroup:update_shape()
 		if id ~= 'in_use' then
 			self.params[id]:bang()
 		end
+	end
+end
+
+--- get a table of all param values
+function ShapeParamGroup:get_all()
+	local values = {}
+	for i, id in ipairs(ShapeParamGroup.param_ids) do
+		values[id] = self.params[id]:get()
+	end
+	return values
+end
+
+--- silently update all params from a table
+function ShapeParamGroup:set_all(values)
+	for i, id in ipairs(ShapeParamGroup.param_ids) do
+		-- TODO: what's with the sudden burst of sound when params are set non-silently?
+		-- shouldn't the shapes NOT change?
+		self.params[id]:set(values[id], true)
+	end
+end
+
+--- reset all params to defaults
+function ShapeParamGroup:reset_all()
+	for i, id in ipairs(ShapeParamGroup.param_ids) do
+		self.params[id]:set_default()
 	end
 end
 

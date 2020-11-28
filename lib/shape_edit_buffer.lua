@@ -29,10 +29,10 @@ end
 
 function ShapeEditBuffer:apply()
 	if not self.compare then
-		edit_shape.params.note = self.note
-		edit_shape.params.output_mode = self.output_mode
-		edit_shape.params.midi_device = self.midi_device
-		edit_shape.params.midi_channel = self.midi_channel
+		edit_shape.note = self.note
+		edit_shape.output_mode = self.output_mode
+		edit_shape.midi_device = self.midi_device
+		edit_shape.midi_channel = self.midi_channel
 	end
 	self:reset()
 end

@@ -95,13 +95,13 @@ output_mode = o_ENGINE
 -- @return true if shape A should be ordered first, based on criteria: position, size, and which
 --         shape was created first
 function compare_shapes(a, b)
-	if a.x == b.x then
-		if a.r == b.r then
+	if a.last_x == b.last_x then
+		if a.last_radius == b.last_radius then
 			return a.id < b.id
 		end
-		return a.r < b.r
+		return a.last_radius < b.last_radius
 	end
-	return a.x < b.x
+	return a.last_x < b.last_x
 end
 
 --- find the 'next' shape before or after `edit_shape`, ordering shapes as described above
@@ -197,8 +197,8 @@ function insert_shape()
 	local group = get_unused_param_group() -- should never be nil; if it is, we have bigger problems
 	edit_shape = Shape.new(group)
 	group.note = note -- TODO: not entirely convinced this is working?
-	group.n = math.random(3, 9)
-	group.r = radius
+	group.num_sides = math.random(3, 9)
+	group.radius = radius
 	group.x = math.random(radius, 128 - radius) + 0.5
 	group.rate = rate
 	-- add to main shapes table
@@ -230,6 +230,21 @@ end
 
 function init()
 	
+	-- inject a callback to reinitialize all shapes' points after pset recall
+	-- this prevents sudden bursts of sound due to shapes jumping across the
+	-- screen, spinning 360 degrees, etc.
+	if params.read_standard == nil then
+		params.read_standard = params.read
+		function params:read(filename)
+			params:read_standard(filename)
+			for n = 1, num_shapes do
+				if shapes[n] ~= nil then
+					shapes[n]:initialize_points()
+				end
+			end
+		end
+	end
+
 	norns.enc.sens(1, 4) -- shape selection
 	norns.enc.accel(1, false)
 
@@ -465,27 +480,32 @@ function init()
 		id = 'reassign_shape_numbers',
 		name = 'reassign shape numbers',
 		action = function()
-			-- unlink all shapes from param groups
-			for n = 1, num_shapes do
-				if shape_param_groups[n].shape then
-					shape_param_groups[n].shape.params = nil
-				end
-				shape_param_groups[n].shape = nil
-			end
 			-- sort shapes
 			table.sort(shapes, compare_shapes)
-			-- relink in left-to-right (and radius, and id) order
+			-- get values
+			local values = {}
 			for n = 1, #shapes do
-				shape_param_groups[n].shape = shapes[n]
-				shapes[n].params = shape_param_groups[n]
-				shapes[n]:update_params()
+				values[n] = shapes[n].param_group:get_all()
+			end
+			-- unlink, set/reset, and re-link param groups
+			for n = 1, num_shapes do
+				local param_group = shape_param_groups[n]
+				param_group.shape = nil
+				if values[n] ~= nil then
+					param_group.shape = shapes[n]
+					shapes[n].param_group = param_group
+					-- TODO: what's with the sudden jump this seems to cause?
+					param_group:set_all(values[n])
+				else
+					param_group:reset_all()
+				end
 			end
 		end
 	}
 
 	for s = 1, 2 do
 		insert_shape()
-		edit_shape.params.active = 1
+		edit_shape.active = 1
 	end
 
 	params:bang()
@@ -495,7 +515,7 @@ function init()
 			clock.sync(rate / clock.get_beat_sec())
 			for s = 1, #shapes do
 				local shape = shapes[s]
-				for v = 1, shape.n do
+				for v = 1, shape.num_sides do
 					-- decay level fades
 					shape.side_levels[v] = shape.side_levels[v] * 0.85
 					shape.vertices[v].level = shape.vertices[v].level * 0.85
@@ -554,7 +574,7 @@ function redraw()
 		edit_shape:draw_points(true, dim)
 		if held_keys[2] or (held_keys[3] and output_mode == o_ENGINE) then
 			if held_keys[2] then
-				draw_setting_centered(edit_shape.x, edit_shape.n)
+				draw_setting_centered(edit_shape.x, edit_shape.num_sides)
 			elseif held_keys[3] then
 				draw_setting_centered(edit_shape.x, edits.note_name)
 				draw_undo()
@@ -644,7 +664,7 @@ function key(n, z)
 				if edits.dirty then
 					edits:apply()
 				elseif k3_time > now - 0.25 then
-					edit_shape.params.active = 1 - edit_shape.params.active
+					edit_shape.active = 1 - edit_shape.active
 				end
 			end
 		end
@@ -676,20 +696,20 @@ function enc(n, d)
 		if edit_shape ~= nil then
 			if held_keys[2] then
 				-- set rotation rate
-				edit_shape.params:delta('rate', d)
+				edit_shape:delta('rate', d)
 			elseif held_keys[3] then
 				-- set note
 				edits.note = edits.note + d
 			else
 				-- set position
-				edit_shape.params:delta('x', d)
+				edit_shape:delta('x', d)
 			end
 		end
 	elseif n == 3 then
 		if edit_shape ~= nil then
 			if held_keys[2] then
 				-- set number of sides
-				edit_shape.params:delta('n', d)
+				edit_shape:delta('num_sides', d)
 			elseif held_keys[3] then
 				k3_time = 0
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
@@ -715,7 +735,7 @@ function enc(n, d)
 				end
 			else
 				-- set size
-				edit_shape.params:delta('r', d)
+				edit_shape:delta('radius', d)
 			end
 		end
 	end
@@ -723,4 +743,9 @@ end
 
 function cleanup()
 	midi_out:clear_sync()
+	-- restore normal paramset read method (remove injected callback)
+	if params.read_standard ~= nil then
+		params.read = params.read_standard
+		params.read_standard = nil
+	end
 end
