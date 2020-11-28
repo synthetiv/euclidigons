@@ -142,9 +142,9 @@ function Shape:draw_lines(selected, dim)
 	end
 	for v = 1, num_sides do
 		local vertex1 = self.vertices[v]
-		local vertex2 = self.vertices[v % num_sides + 1]
+		local vertex2 = self.vertices[v % self.num_sides + 1]
 		local level = self.side_levels[v]
-		if num_sides == 2 then
+		if self.num_sides == 2 then
 			level = math.max(self.side_levels[v + 1])
 		end
 		if selected then
@@ -319,7 +319,7 @@ function Shape:check_intersection(other)
 		for s = 1, num_sides do
 			-- TODO: it's probably a waste of time to do this for every pair of segments...
 			local vertex2a = other.vertices[s]
-			local vertex2b = other.vertices[s % num_sides + 1]
+			local vertex2b = other.vertices[s % other.num_sides + 1]
 			local t, pos, vel, x, y = calculate_point_segment_intersection(vertex1, vertex2a, vertex2b, other.x, num_sides)
 			if t ~= nil then
 				if t > 0 then
