@@ -196,7 +196,7 @@ function insert_shape()
 	-- get the next unused param group and populate it
 	local group = get_unused_param_group() -- should never be nil; if it is, we have bigger problems
 	edit_shape = Shape.new(group)
-	group.note = note -- TODO: not entirely convinced this is working?
+	group.note = note
 	group.num_sides = math.random(3, 9)
 	group.radius = radius
 	group.x = math.random(radius, 128 - radius) + 0.5
@@ -414,7 +414,7 @@ function init()
 			if value == 5 then
 				return 'multi (per shape)'
 			else
-				return midi_out.devices[value].name -- TODO: why is crow showing up here?!
+				return midi_out.devices[value].name
 			end
 		end,
 		action = function(value)
@@ -494,7 +494,6 @@ function init()
 				if values[n] ~= nil then
 					param_group.shape = shapes[n]
 					shapes[n].param_group = param_group
-					-- TODO: what's with the sudden jump this seems to cause?
 					param_group:set_all(values[n])
 				else
 					param_group:reset_all()

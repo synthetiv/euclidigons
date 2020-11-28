@@ -44,17 +44,16 @@ function ShapeParamGroup.new(index)
 			end
 		end,
 		formatter = function(param)
-			-- TODO: make sure this really works and responds correctly to changes in scale
-			-- TODO: show MIDI note number in MIDI mode...?
+			-- TODO: make sure this responds correctly to changes in scale
 			if group.shape ~= nil then
-				return group.shape.note_name
+				return string.format('%s (%d)', group.shape.note_name, group.shape.midi_note)
 			else
 				return '--'
 			end
 		end
 	}
 
-	-- TODO: show/hide based on global setting
+	-- TODO: test these!
 	params:add{
 		type = 'option',
 		id = prefix .. 'output_mode',
@@ -63,7 +62,6 @@ function ShapeParamGroup.new(index)
 		default = 1
 	}
 
-	-- TODO: show/hide
 	params:add{
 		type = 'number',
 		id = prefix .. 'midi_device',
@@ -77,7 +75,6 @@ function ShapeParamGroup.new(index)
 		end
 	}
 
-	-- TODO: show/hide
 	params:add{
 		type = 'number',
 		id = prefix .. 'midi_channel',
@@ -242,12 +239,10 @@ function ShapeParamGroup:get_all()
 	return values
 end
 
---- silently update all params from a table
+--- update all params from a table
 function ShapeParamGroup:set_all(values)
 	for i, id in ipairs(ShapeParamGroup.param_ids) do
-		-- TODO: what's with the sudden burst of sound when params are set non-silently?
-		-- shouldn't the shapes NOT change?
-		self.params[id]:set(values[id], true)
+		self.params[id]:set(values[id])
 	end
 end
 
