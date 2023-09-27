@@ -25,6 +25,13 @@ At startup, there will be two shapes visible on the screen. Think of the polygon
 **K1+K2** deletes the selected shape.\
 **K1+K3** inserts a new shape.
 
+Arc encoders are also supported and edit the currently active shape:
+
+**ARC 1** sets the note.\
+**ARC 2** transposes the note in octaves.\
+**ARC 3** sets the rotation rate.\
+**ARC 4** sets the number of sides (1-9).
+
 <em>* by default, notes are only sounded when one shape's vertex crosses _into_ another shape, but this  can be changed using the 'trigger style' param.</em>\
 <em>† set the 'mute style' param to 'own note only' to allow a muted shape's vertices to pluck the strings of another shape.</em>
 

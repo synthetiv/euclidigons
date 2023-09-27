@@ -52,6 +52,11 @@ for v = 1, num_voices do
 	voice_manager.style.slots[v].on_release = voice_release
 	voice_manager.style.slots[v].on_steal = voice_remove
 end
+function generate_scale(root_num, scale_type)
+	local result = musicutil.generate_scale(root_num, scale_type, 1)
+	table.remove(result, #result)
+	return result
+end
 
 Shape = include 'lib/shape'
 midi_out = include 'lib/midi'
@@ -64,7 +69,7 @@ shapes = {}
 
 rate = 1 / 48
 
-scale = musicutil.generate_scale(36, 'minor pentatonic', 1)
+scale = generate_scale(36, 'minor pentatonic')
 
 held_keys = { false, false, false }
 k3_time = 0
@@ -82,6 +87,8 @@ o_ENGINE = 1
 o_MIDI = 2
 o_BOTH = 3
 output_mode = o_ENGINE
+
+a = arc.connect()
 
 --- sorting callback for Shapes
 -- @param a shape A
@@ -202,13 +209,14 @@ function handle_strike(shape, side, pos, vel, x, y, other, vertex)
 end
 
 function init()
+	a:all(0)
 	
 	norns.enc.sens(1, 4) -- shape selection
 	norns.enc.accel(1, false)
 
 	for s = 1, 2 do
 		insert_shape()
-		edit_shape.mute = false
+		edit_shape.mute = false 
 	end
 
 	local scale_names = {}
@@ -266,8 +274,9 @@ function init()
 		options = scale_names,
 		default = 5,
 		action = function(value)
-			scale = musicutil.generate_scale(params:get('root_note'), value, 1)
+			scale = generate_scale(params:get('root_note'), value)
 			for s = 1, #shapes do
+				-- this is necessary because there's a setter in shapes
 				shapes[s].note = shapes[s].note
 			end
 		end
@@ -284,7 +293,7 @@ function init()
 			return musicutil.note_num_to_name(param:get(), true)
 		end,
 		action = function(value)
-			scale = musicutil.generate_scale(value, params:get('scale_mode'), 1)
+			scale = generate_scale(value, params:get('scale_mode'))
 			for s = 1, #shapes do
 				shapes[s].note = shapes[s].note
 			end
@@ -532,6 +541,113 @@ function redraw()
 		end
 	end
 	screen.update()
+
+	if edit_shape ~= nil then
+		-- ARC 1: Note
+		local scale_degrees = #scale
+		local scale_mark = 64 / scale_degrees
+		local degree = (edit_shape.edits.note - 1) % scale_degrees
+		degree = math.ceil(scale_mark * degree) + 1
+		for i = 1, 64 do
+			if math.floor((i - 1) % scale_mark) == 0 then
+				a:led(1, i, 3)
+			else
+				a:led(1, i, 0)
+			end
+		end
+		a:led(1, degree - 2, 3)
+		a:led(1, degree - 1, 8)
+		a:led(1, degree, 15)
+		a:led(1, degree + 1, 8)
+		a:led(1, degree + 2, 3)
+		-- ARC 2: Octave
+		local octave = util.clamp(6 + math.floor((edit_shape.edits.note - 1) / #scale), 1, 11)
+		for i = 1, 64 do
+			if (i - 3) % 6 == 0 then
+				a:led(2, i, 3)
+			else
+				a:led(2, i, 0)
+			end
+		end
+		a:led(2, octave * 6 - 5, 3)
+		a:led(2, octave * 6 - 4, 8)
+		a:led(2, octave * 6 - 3, 15)
+		a:led(2, octave * 6 - 2, 8)
+		a:led(2, octave * 6 - 1, 3)
+		-- ARC 3: Speed
+		local theta = 64 * edit_shape.theta / tau 
+		while theta < 0 do
+			theta = theta + 64
+		end
+		local theta_i = math.ceil(theta)
+		local brightness = math.floor((theta_i - theta) * 15)
+		for i = 1, 64 do
+			a:led(3, i, 0)
+		end
+		a:led(3, theta_i, brightness)
+		a:led(3, math.fmod(theta_i + 1, 64), 15 - brightness)
+		-- ARC 4: Number of sides
+		for i = 1, 9 do
+			if edit_shape.n >= i then
+				a:led(4, i * 7 - 6, 15)
+				a:led(4, i * 7 - 5, 15)
+				a:led(4, i * 7 - 4, 8)
+				a:led(4, i * 7 - 3, 7)
+				a:led(4, i * 7 - 2, 6)
+				a:led(4, i * 7 - 1, 5)
+				a:led(4, i * 7, 4)
+			else
+				a:led(4, i * 7 - 6, 0)
+				a:led(4, i * 7 - 5, 0)
+				a:led(4, i * 7 - 4, 0)
+				a:led(4, i * 7 - 3, 0)
+				a:led(4, i * 7 - 2, 0)
+				a:led(4, i * 7 - 1, 0)
+				a:led(4, i * 7, 0)
+			end
+		end
+		if edit_shape.n == 9 then
+			a:led(4, 64, 2)
+		else
+			a:led(4, 64, 0)
+		end
+	end
+	a:refresh()
+end
+
+function a.delta(n, d)
+	if edit_shape ~= nil then
+		if n == 1 then -- ARC 1: Note
+			if (
+				(edit_shape.delta_arc_note > 0 and d < 0)
+				or (edit_shape.delta_arc_note < 0 and d > 0)
+			) then
+				edit_shape.delta_arc_note = d
+			else
+				edit_shape.delta_arc_note = edit_shape.delta_arc_note + d
+			end
+		elseif n == 2 then -- ARC 2: Octave
+			if (
+				(edit_shape.delta_arc_oct > 0 and d < 0)
+				or (edit_shape.delta_arc_oct < 0 and d > 0)
+			) then
+				edit_shape.delta_arc_oct = d
+			else
+				edit_shape.delta_arc_oct = edit_shape.delta_arc_oct + d
+			end
+		elseif n == 3 then -- ARC 3: Speed
+			edit_shape.rate = edit_shape.rate + d * 0.0005
+		else -- ARC 4: Number of sides
+			if (
+				(edit_shape.delta_arc_n > 0 and d < 0)
+				or (edit_shape.delta_arc_n < 0 and d > 0)
+			) then
+				edit_shape.delta_arc_n = d
+			else
+				edit_shape.delta_arc_n = edit_shape.delta_arc_n + d
+			end
+		end
+	end
 end
 
 function draw_setting(y, label, value)
@@ -621,7 +737,7 @@ function enc(n, d)
 				edit_shape.rate = edit_shape.rate + d * 0.0015
 			elseif held_keys[3] then
 				-- set note
-				edit_shape.edits.note = edit_shape.edits.note + d
+				edit_shape.edits.note = util.clamp(edit_shape.edits.note + d, -64, 73)
 			else
 				-- set position
 				edit_shape.delta_x = edit_shape.delta_x + d * 0.5
@@ -635,7 +751,7 @@ function enc(n, d)
 			elseif held_keys[3] then
 				if output_mode == o_ENGINE or (output_mode ~= nil and midi_out.device ~= nil and midi_out.channel ~= nil) then
 					-- device and channel are either fixed or irrelevant; set octave
-					edit_shape.edits.note = edit_shape.edits.note + d * #scale
+					edit_shape.edits.note = util.clamp(edit_shape.edits.note + d * #scale, -64, 73)
 				else
 					local edits = edit_shape.edits
 					local next_mode = edits.output_mode + d

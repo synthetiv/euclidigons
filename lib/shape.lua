@@ -73,6 +73,9 @@ function Shape.new(note, n, r, x, rate)
 		area = 0,
 		_r = r,
 		delta_x = 0,
+		delta_arc_n = 0,
+		delta_arc_oct = 0,
+		delta_arc_note = 0,
 		x = x,
 		nx = x,
 		rate = rate,
@@ -168,6 +171,42 @@ function Shape:tick()
 	self.theta = self.theta + self.rate
 	while self.theta > tau do
 		self.theta = self.theta - tau
+	end
+	while self.theta < -tau do
+		self.theta = self.theta + tau
+	end
+	-- ARC 1
+	local delta_arc_note = self.delta_arc_note / 30 
+	if delta_arc_note > 0 then
+		delta_arc_note = math.floor(delta_arc_note)
+	else
+		delta_arc_note = math.ceil(delta_arc_note)
+	end
+	if delta_arc_note ~= 0 then
+		self.delta_arc_note = 0
+		self.edits.note = util.clamp(self.edits.note + delta_arc_note, -64, 73)
+	end
+	-- ARC 2
+	local delta_arc_oct = self.delta_arc_oct / 30 
+	if delta_arc_oct > 0 then
+		delta_arc_oct = math.floor(delta_arc_oct)
+	else
+		delta_arc_oct = math.ceil(delta_arc_oct)
+	end
+	if delta_arc_oct ~= 0 then
+		self.delta_arc_oct = 0
+		self.edits.note = util.clamp(self.edits.note + delta_arc_oct * #scale, -64, 73)
+	end
+	-- ARC 4
+	local delta_arc_n = self.delta_arc_n / 50
+	if delta_arc_n > 0 then
+		delta_arc_n = math.floor(delta_arc_n)
+	else
+		delta_arc_n = math.ceil(delta_arc_n)
+	end
+	if delta_arc_n ~= 0 then
+		self.delta_arc_n = 0
+		self.n = util.clamp(self.n + delta_arc_n, 1, 9)
 	end
 	self:calculate_points()
 end
